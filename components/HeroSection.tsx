@@ -10,8 +10,18 @@ const STATS = [
   { value: '10+', label: 'Tahun Berdiri' },
 ];
 
+interface LandingPageData {
+  data?: {
+    hero_background_url?: string;
+    hero_title?: string;
+    hero_subtitle?: string;
+    hero_cta_text?: string;
+    hero_cta_link?: string;
+  };
+}
+
 export function HeroSection() {
-  const [landingPageData, setLandingPageData] = useState(null);
+  const [landingPageData, setLandingPageData] = useState<LandingPageData | null>(null);
 
   useEffect(() => {
     const fetchLandingPageData = async () => {

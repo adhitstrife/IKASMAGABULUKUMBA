@@ -22,9 +22,18 @@ const NAV_LINKS = [
   { href: '#footer', label: 'Kontak' },
 ];
 
+interface NavbarLandingPageData {
+  data?: {
+    logo_url?: string;
+    organization?: {
+      name?: string;
+    };
+  };
+}
+
 export function Navbar() {
   const [opened, { toggle, close }] = useDisclosure(false);
-  const [landingPageData, setLandingPageData] = useState(null);
+  const [landingPageData, setLandingPageData] = useState<NavbarLandingPageData | null>(null);
 
   useEffect(() => {
     const fetchLandingPageData = async () => {

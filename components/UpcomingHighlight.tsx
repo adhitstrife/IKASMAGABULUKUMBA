@@ -6,8 +6,14 @@ import { IconArrowRight, IconFlame } from '@tabler/icons-react';
 import { events } from '@/data/events';
 import { EventCard } from './EventCard';
 
+interface EventsData {
+  data?: {
+    events?: any[];
+  };
+}
+
 export function UpcomingHighlight() {
-  const [eventsData, setEventsData] = useState(null);
+  const [eventsData, setEventsData] = useState<EventsData | null>(null);
   const [transformedEvents, setTransformedEvents] = useState([]);
 
   useEffect(() => {
