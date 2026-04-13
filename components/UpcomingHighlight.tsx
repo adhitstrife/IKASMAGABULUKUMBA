@@ -36,10 +36,6 @@ export function UpcomingHighlight() {
               (sum: number, ticket: any) => sum + (ticket.quantity_sold || 0),
               0
             ) || 0;
-            const totalQuantity = apiEvent.latest_addition?.tickets?.reduce(
-              (sum: number, ticket: any) => sum + (ticket.quantity || 0),
-              0
-            ) || 0;
             return {
               id: apiEvent.id,
               title: apiEvent.name,
@@ -51,7 +47,7 @@ export function UpcomingHighlight() {
               image: apiEvent.image || 'https://images.unsplash.com/photo-1519703936-c4a3b3eb88e4?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
               description: apiEvent.description,
               isFeatured: true,
-              seats: totalQuantity,
+              seats: apiEvent.capacity || 0,
               registeredCount: totalQuantitySold,
               organizer: 'IKASMAGABULUKUMBA',
             };
