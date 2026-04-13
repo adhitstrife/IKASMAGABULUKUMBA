@@ -15,12 +15,14 @@ import {
   SimpleGrid,
   Center,
   ThemeIcon,
+  Skeleton,
 } from '@mantine/core';
 import {
   IconSearch,
   IconAdjustments,
   IconX,
   IconCalendarOff,
+  IconAlertCircle,
 } from '@tabler/icons-react';
 import { events, CATEGORY_OPTIONS, EventCategory } from '@/data/events';
 import { EventCard } from './EventCard';
@@ -52,11 +54,15 @@ export function EventList() {
   const [sort, setSort] = useState('date-asc');
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [showFreeOnly, setShowFreeOnly] = useState(false);
-  const [transformedEvents, setTransformedEvents] = useState(events);
+  const [transformedEvents, setTransformedEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch events from API on mount
   useEffect(() => {
     const fetchEventsData = async () => {
+      setLoading(true);
+      setError(null);
       try {
         const url = `/api/events?key=${encodeURIComponent(process.env.NEXT_PUBLIC_ORG_SECRET_KEY || '')}`;
         const response = await fetch(url);
@@ -64,7 +70,7 @@ export function EventList() {
         console.log('Events data from API:', data);
 
         // Transform API events to match Event interface
-        if (data?.data?.events) {
+        if (data?.data?.events && data.data.events.length > 0) {
           const transformed = data.data.events.map((apiEvent: any) => {
             const totalQuantitySold = apiEvent.latest_addition?.tickets?.reduce(
               (sum: number, ticket: any) => sum + (ticket.quantity_sold || 0),
@@ -91,11 +97,16 @@ export function EventList() {
             };
           });
           setTransformedEvents(transformed);
+        } else {
+          setError('Tidak ada event yang tersedia saat ini');
+          setTransformedEvents([]);
         }
-      } catch (error) {
-        console.error('Error fetching events data:', error);
-        // Fallback to local events
-        setTransformedEvents(events);
+      } catch (err) {
+        console.error('Error fetching events data:', err);
+        setError('Gagal memuat data event');
+        setTransformedEvents([]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -335,29 +346,61 @@ export function EventList() {
         </Box>
 
         {/* Result count */}
-        <Group justify="space-between" mb="lg">
-          <Text size="sm" c="dimmed">
-            Menampilkan{' '}
-            <Text component="span" fw={700} c="dark" size="sm">
-              {filtered.length}
-            </Text>{' '}
-            dari {transformedEvents.length} event
-          </Text>
-          {hasActiveFilters && (
-            <Text size="xs" c="dimmed" style={{ fontStyle: 'italic' }}>
-              Filter aktif
+        {!loading && !error && (
+          <Group justify="space-between" mb="lg">
+            <Text size="sm" c="dimmed">
+              Menampilkan{' '}
+              <Text component="span" fw={700} c="dark" size="sm">
+                {filtered.length}
+              </Text>{' '}
+              dari {transformedEvents.length} event
             </Text>
-          )}
-        </Group>
+            {hasActiveFilters && (
+              <Text size="xs" c="dimmed" style={{ fontStyle: 'italic' }}>
+                Filter aktif
+              </Text>
+            )}
+          </Group>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Box key={i}>
+                <Skeleton height={200} radius="xl" mb="md" />
+                <Skeleton height={20} radius="md" mb="md" />
+                <Skeleton height={16} radius="md" width="70%" />
+              </Box>
+            ))}
+          </SimpleGrid>
+        )}
+
+        {/* Error State */}
+        {!loading && error && (
+          <Center py={80}>
+            <Stack align="center" gap="md">
+              <ThemeIcon size={72} radius="xl" variant="light" color="red">
+                <IconAlertCircle size={36} />
+              </ThemeIcon>
+              <Title order={4} c="dimmed">
+                {error}
+              </Title>
+            </Stack>
+          </Center>
+        )}
 
         {/* Event Grid */}
-        {filtered.length > 0 ? (
+        {!loading && !error && filtered.length > 0 && (
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
             {filtered.map((event) => (
               <EventCard key={event.id} event={event} />
             ))}
           </SimpleGrid>
-        ) : (
+        )}
+
+        {/* No results State */}
+        {!loading && !error && filtered.length === 0 && transformedEvents.length > 0 && (
           <Center py={80}>
             <Stack align="center" gap="md">
               <ThemeIcon size={72} radius="xl" variant="light" color="gray">
