@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   const backendUrl = process.env.BACKEND_URL;
-  const orgSecretKey = process.env.ORG_SECRET_KEY;
 
-  if (!backendUrl || !orgSecretKey) {
+  if (!backendUrl) {
     return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
   }
 
@@ -15,11 +14,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const response = await fetch(`${backendUrl}/api/v1/registrations/purchase`, {
+  const response = await fetch(`${backendUrl}/registrations/purchase`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Org-Secret-Key': orgSecretKey,
     },
     body: JSON.stringify(body),
   });
