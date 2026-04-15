@@ -274,12 +274,11 @@ export default function EventDetailPage() {
         setCheckoutError(json?.message ?? json?.error ?? 'Terjadi kesalahan. Silakan coba lagi.');
         return;
       }
-      setCheckoutOpen(false);
-      const paymentUrl = json?.payment_url;
+      const paymentUrl = json?.payment_url ?? json?.registration?.payment_url;
       if (paymentUrl) {
         window.open(paymentUrl, '_blank');
       }
-      alert('Pendaftaran berhasil! Redirecting ke halaman pembayaran...');
+      setCheckoutOpen(false);
     } catch {
       setCheckoutError('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     } finally {
