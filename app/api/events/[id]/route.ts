@@ -24,16 +24,16 @@ export async function GET(
       headers: {
         'Content-Type': 'application/json',
       },
+      cache: 'no-store',
     });
-
     if (!response.ok) {
       throw new Error(`Backend returned ${response.status}: ${response.statusText}`);
     }
 
     const data = await response.json();
 
-    console.log('Event detail response:', data);
-
+    // console.log('Event detail response:', data);
+    // console.log('event additions:', data?.data?.additions[0].tickets);
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching event detail:', error);

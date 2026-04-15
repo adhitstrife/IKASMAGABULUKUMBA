@@ -126,20 +126,20 @@ export default function EventDetailPage() {
         const extractedEventData = eventData?.data ?? eventData;
         setEvent(extractedEventData);
 
-        // Fetch landing page data to get org phone
-        try {
-          const landingPageUrl = '/api/landing-page';
-          const params_obj = new URLSearchParams(window.location.search);
-          const key = params_obj.get('key');
-          const landingPageResponse = await fetch(`${landingPageUrl}?key=${key}`);
-          if (landingPageResponse.ok) {
-            const landingPageData = await landingPageResponse.json();
-            const phone = landingPageData?.data?.organization?.phone;
-            if (phone) setOrgPhone(phone);
-          }
-        } catch (err) {
-          console.error('Error fetching landing page data:', err);
-        }
+        // // Fetch landing page data to get org phone
+        // try {
+        //   const landingPageUrl = '/api/landing-page';
+        //   const params_obj = new URLSearchParams(window.location.search);
+        //   const key = params_obj.get('key');
+        //   const landingPageResponse = await fetch(`${landingPageUrl}?key=${key}`);
+        //   if (landingPageResponse.ok) {
+        //     const landingPageData = await landingPageResponse.json();
+        //     const phone = landingPageData?.data?.organization?.phone;
+        //     if (phone) setOrgPhone(phone);
+        //   }
+        // } catch (err) {
+        //   console.error('Error fetching landing page data:', err);
+        // }
       } catch (err) {
         console.error('Error fetching event:', err);
         setError('Gagal memuat detail event.');
@@ -437,72 +437,101 @@ export default function EventDetailPage() {
                   const isExpired = new Date(ticket.sale_end) < new Date();
 
                   return (
-                    <Paper key={ticket.id} withBorder radius="xl" p="xl">
-                      <Stack gap="sm">
-                        {/* Header */}
-                        <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
-                          <Group gap="xs" align="center">
-                            <IconTicket size={22} color="#228be6" />
-                            <Text fw={800} size="lg">{ticket.name}</Text>
-                            {!ticket.is_active && (
-                              <Badge color="gray" size="sm" radius="xl">Nonaktif</Badge>
-                            )}
-                            {isSoldOut && (
-                              <Badge color="red" size="sm" radius="xl">Habis Terjual</Badge>
-                            )}
-                            {isExpired && !isSoldOut && (
-                              <Badge color="orange" size="sm" radius="xl">Penjualan Berakhir</Badge>
-                            )}
-                          </Group>
-                          <Text fw={900} size="xl" c={ticket.price_cents === 0 ? 'green' : '#1971c2'}>
-                            {ticket.price_cents === 0 ? 'Gratis' : formatPrice(ticket.price_cents)}
-                          </Text>
-                        </Group>
+                    <Box
+                      key={ticket.id}
+                      style={{
+                        display: 'flex',
+                        borderRadius: 16,
+                        overflow: 'hidden',
+                        border: '1px solid #dee2e6',
+                        backgroundColor: '#fff',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+                        opacity: (isSoldOut || isExpired || !ticket.is_active) ? 0.75 : 1,
+                      }}
+                    >
+                      {/* Left accent bar */}
+                      <Box style={{
+                        width: 8,
+                        backgroundColor: isSoldOut ? '#adb5bd' : isExpired ? '#fd7e14' : '#228be6',
+                        flexShrink: 0,
+                      }} />
 
-                        {/* Description */}
-                        {ticket.description && (
-                          <Text size="sm" c="dimmed" style={{ whiteSpace: 'pre-line', lineHeight: 1.7 }} lineClamp={4}>
-                            {ticket.description}
-                          </Text>
-                        )}
+                      {/* Main content */}
+                      <Box style={{ flex: 1, padding: '20px 24px', minWidth: 0 }}>
+                        <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
+                          {/* Left: ticket info */}
+                          <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
+                            <Group gap="xs" align="center" wrap="wrap">
+                              <IconTicket size={20} color={isSoldOut ? '#adb5bd' : '#228be6'} />
+                              <Text fw={800} size="xl" style={{ lineHeight: 1.2 }}>{ticket.name}</Text>
+                              {!ticket.is_active && <Badge color="gray" size="sm" radius="xl">Nonaktif</Badge>}
+                              {isSoldOut && <Badge color="red" size="sm" radius="xl">Habis Terjual</Badge>}
+                              {isExpired && !isSoldOut && <Badge color="orange" size="sm" radius="xl">Penjualan Berakhir</Badge>}
+                            </Group>
 
-                        <Divider />
+                            {ticket.description && (
+                              <Text size="sm" c="dimmed" lineClamp={2} style={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>
+                                {ticket.description}
+                              </Text>
+                            )}
 
-                        {/* Info row */}
-                        <Group justify="space-between" wrap="wrap" gap="xs">
-                          <Group gap="xl" wrap="wrap">
-                            <Box>
-                              <Text size="xs" c="dimmed" fw={500}>Penjualan Berakhir</Text>
-                              <Group gap={4} mt={2}>
-                                <IconClock size={14} color="#868e96" />
-                                <Text size="sm" fw={600}>{formatDate(ticket.sale_end)}</Text>
-                              </Group>
-                            </Box>
-                            <Box>
-                              <Text size="xs" c="dimmed" fw={500}>Sisa Tiket</Text>
-                              <Text size="sm" fw={600} mt={2} c={availableQty <= 10 ? 'red' : 'dark'}>
-                                {availableQty} tiket tersisa
+                            <Group gap="xl" mt={4} wrap="wrap">
+                              <Box>
+                                <Text size="xs" c="dimmed" fw={500} style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>Berakhir</Text>
+                                <Group gap={4} mt={2}>
+                                  <IconClock size={13} color="#868e96" />
+                                  <Text size="sm" fw={600}>{formatDate(ticket.sale_end)}</Text>
+                                </Group>
+                              </Box>
+                              <Box>
+                                <Text size="xs" c="dimmed" fw={500} style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sisa</Text>
+                                <Text size="sm" fw={700} mt={2} c={availableQty <= 10 ? 'red' : 'dark'}>
+                                  {availableQty} tiket
+                                </Text>
+                              </Box>
+                              <Box>
+                                <Text size="xs" c="dimmed" fw={500} style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>Per Pesanan</Text>
+                                <Text size="sm" fw={600} mt={2}>
+                                  {ticket.min_per_order === ticket.max_per_order
+                                    ? `${ticket.min_per_order} tiket`
+                                    : `${ticket.min_per_order}–${ticket.max_per_order} tiket`}
+                                </Text>
+                              </Box>
+                            </Group>
+                          </Stack>
+
+                          {/* Perforated divider */}
+                          <Box style={{
+                            width: 1,
+                            alignSelf: 'stretch',
+                            borderLeft: '2px dashed #dee2e6',
+                            margin: '0 8px',
+                            flexShrink: 0,
+                          }} />
+
+                          {/* Right: price + action */}
+                          <Stack align="center" justify="center" gap="sm" style={{ minWidth: 120 }}>
+                            <Box style={{ textAlign: 'center' }}>
+                              <Text size="xs" c="dimmed" fw={500} style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>Harga</Text>
+                              <Text fw={900} size="xl" c={ticket.price_cents === 0 ? 'green' : '#1971c2'} style={{ lineHeight: 1.2 }}>
+                                {ticket.price_cents === 0 ? 'Gratis' : formatPrice(ticket.price_cents)}
                               </Text>
                             </Box>
-                            <Box>
-                              <Text size="xs" c="dimmed" fw={500}>Per Pesanan</Text>
-                              <Text size="sm" fw={600} mt={2}>
-                                Maks. {ticket.max_per_order} tiket
-                              </Text>
-                            </Box>
-                          </Group>
-                          <Button
-                            size="md"
-                            radius="xl"
-                            disabled={isSoldOut || isExpired || !ticket.is_active}
-                            onClick={() => handleSelectTicket(ticket.id)}
-                            style={{ minWidth: 130 }}
-                          >
-                            {isSoldOut ? 'Habis Terjual' : isExpired ? 'Berakhir' : 'Daftar Sekarang'}
-                          </Button>
+                            <Button
+                              size="sm"
+                              radius="xl"
+                              fullWidth
+                              disabled={isSoldOut || isExpired || !ticket.is_active}
+                              onClick={() => handleSelectTicket(ticket.id)}
+                              variant={isSoldOut || isExpired ? 'light' : 'filled'}
+                              color={isSoldOut ? 'gray' : isExpired ? 'orange' : 'blue'}
+                            >
+                              {isSoldOut ? 'Habis' : isExpired ? 'Berakhir' : 'Daftar'}
+                            </Button>
+                          </Stack>
                         </Group>
-                      </Stack>
-                    </Paper>
+                      </Box>
+                    </Box>
                   );
                 })}
               </Stack>
