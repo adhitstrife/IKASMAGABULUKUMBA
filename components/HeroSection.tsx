@@ -6,8 +6,8 @@ import { IconCalendarEvent, IconArrowRight } from '@tabler/icons-react';
 
 const STATS = [
   { value: '500+', label: 'Alumni Aktif' },
-  { value: '20+', label: 'Event Per Tahun' },
-  { value: '10+', label: 'Tahun Berdiri' },
+  // { value: '20+', label: 'Event Per Tahun' },
+  // { value: '10+', label: 'Tahun Berdiri' },
 ];
 
 interface LandingPageData {

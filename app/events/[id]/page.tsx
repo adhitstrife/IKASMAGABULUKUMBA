@@ -21,6 +21,8 @@ import {
   Checkbox,
   SimpleGrid,
   Stepper,
+  Anchor,
+  ScrollArea,
 } from '@mantine/core';
 import {
   IconArrowLeft,
@@ -77,6 +79,7 @@ export default function EventDetailPage() {
 
   // Checkout modal state
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState(0);
   
@@ -400,7 +403,7 @@ export default function EventDetailPage() {
                             size="sm"
                             radius="xl"
                             disabled={isSoldOut || isExpired || !ticket.is_active}
-                            onClick={() => handleBuyTicket(ticket.id)}
+                            onClick={() => handleSelectTicket(ticket.id)}
                           >
                             {isSoldOut ? 'Habis' : 'Buy'}
                           </Button>
@@ -414,6 +417,61 @@ export default function EventDetailPage() {
           )}
         </Stack>
       </Container>
+
+      {/* Terms Modal */}
+      <Modal
+        opened={termsOpen}
+        onClose={() => setTermsOpen(false)}
+        title={<Text fw={700} size="lg">Syarat &amp; Ketentuan</Text>}
+        size="lg"
+        scrollAreaComponent={ScrollArea.Autosize}
+        zIndex={400}
+      >
+        <Stack gap="md" style={{ fontSize: 14, lineHeight: 1.7, color: '#374151' }}>
+          <section>
+            <Text fw={700} size="md" c="#111827" mb={6}>1. Ketentuan Umum</Text>
+            <Text>Dengan membeli tiket melalui platform ini, Anda setuju untuk mematuhi semua syarat dan ketentuan yang berlaku. Tiket yang dibeli adalah non-transferable kecuali dengan persetujuan dari penyelenggara event.</Text>
+          </section>
+          <section>
+            <Text fw={700} size="md" c="#111827" mb={6}>2. Pembayaran</Text>
+            <Text>Pembayaran tiket harus dilakukan melalui metode pembayaran yang tersedia di platform. Setiap transaksi pembayaran akan diproses sesuai dengan informasi yang Anda berikan. Platform mengambil biaya 2.5% dari penerimaan penyelenggara acara.</Text>
+          </section>
+          <section>
+            <Text fw={700} size="md" c="#111827" mb={6}>3. Kebijakan Refund - PENTING</Text>
+            <Box style={{ backgroundColor: '#fff5f5', borderLeft: '4px solid #ef4444', padding: '12px 16px', marginBottom: 12 }}>
+              <Text fw={700} c="#b91c1c" mb={6}>⚠️ Perhatian: Kebijakan Refund</Text>
+              <Text c="#b91c1c">Dalam hal refund, harga tiket akan dikembalikan penuh kepada pembeli. Biaya platform sebesar 2.5% tidak akan dikembalikan kepada penyelenggara acara. Refund hanya dapat diajukan sesuai dengan periode yang telah ditentukan oleh penyelenggara event.</Text>
+            </Box>
+          </section>
+          <section>
+            <Text fw={700} size="md" c="#111827" mb={6}>4. Pembatalan dan Perubahan Event</Text>
+            <Text>Penyelenggara event berhak untuk membatalkan, menunda, atau mengubah lokasi dan tanggal event. Dalam hal pembatalan event oleh penyelenggara, Anda berhak mendapatkan refund penuh dari harga tiket.</Text>
+          </section>
+          <Box style={{ backgroundColor: '#fefce8', borderLeft: '4px solid #ca8a04', padding: '12px 16px' }}>
+            <Text fw={700} size="md" c="#111827" mb={6}>5. Batasan Tanggung Jawab Platform</Text>
+            <Text c="#111827">Platform TIDAK bertanggung jawab atas perubahan, penundaan, atau pembatalan event. Semua keputusan terkait dengan perubahan atau pembatalan event sepenuhnya menjadi tanggung jawab event organizer/penyelenggara.</Text>
+          </Box>
+          <section>
+            <Text fw={700} size="md" c="#111827" mb={6}>6. Data Pribadi</Text>
+            <Text>Informasi pribadi yang Anda berikan akan digunakan untuk keperluan administrasi event dan tidak akan dibagikan kepada pihak ketiga tanpa persetujuan Anda.</Text>
+          </section>
+          <section>
+            <Text fw={700} size="md" c="#111827" mb={6}>7. Tanggung Jawab Peserta</Text>
+            <Text>Peserta event setuju untuk mematuhi semua peraturan yang berlaku di lokasi event. Penyelenggara event tidak bertanggung jawab atas kehilangan, kerusakan, atau pencurian barang pribadi selama event.</Text>
+          </section>
+          <section>
+            <Text fw={700} size="md" c="#111827" mb={6}>8. Hak Penyelenggara</Text>
+            <Text>Penyelenggara event berhak untuk menolak masuk atau mengeluarkan peserta yang melanggar kebijakan. Tidak ada refund dalam kasus seperti ini.</Text>
+          </section>
+          <section>
+            <Text fw={700} size="md" c="#111827" mb={6}>9. Perubahan Syarat dan Ketentuan</Text>
+            <Text>Kami berhak untuk mengubah syarat dan ketentuan ini kapan saja. Penggunaan berkelanjutan dari platform ini berarti Anda menerima perubahan tersebut.</Text>
+          </section>
+          <Box style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '12px 16px' }}>
+            <Text size="xs" c="#4b5563"><strong>Terakhir diperbarui:</strong> 12 April 2026</Text>
+          </Box>
+        </Stack>
+      </Modal>
 
       {/* Checkout Modal */}
       <Modal
@@ -587,17 +645,19 @@ export default function EventDetailPage() {
                     </Text>
                   </Group>
                   <Divider />
-                  <Group justify="space-between">
-                    <Text fw={700}>Total:</Text>
-                    <Text fw={800} size="lg">
-                      {selectedTicketId
-                        ? formatPrice(
-                            (tickets.find((t) => t.id === selectedTicketId)?.price_cents || 0) *
-                              quantity
-                          )
-                        : '-'}
-                    </Text>
-                  </Group>
+                  <Box style={{ backgroundColor: '#e7f5ff', borderRadius: 8, padding: '10px 14px' }}>
+                    <Group justify="space-between">
+                      <Text fw={700} c="#1971c2">Total yang Dibayar:</Text>
+                      <Text fw={800} size="xl" c="#1971c2">
+                        {selectedTicketId
+                          ? formatPrice(
+                              (tickets.find((t) => t.id === selectedTicketId)?.price_cents || 0) *
+                                quantity
+                            )
+                          : '-'}
+                      </Text>
+                    </Group>
+                  </Box>
                 </Stack>
               </Paper>
 
@@ -609,7 +669,18 @@ export default function EventDetailPage() {
               />
 
               <Checkbox
-                label="Saya menerima Syarat dan Ketentuan"
+                label={
+                  <Text size="sm">
+                    Saya telah membaca dan menyetujui{' '}
+                    <Anchor
+                      size="sm"
+                      onClick={(e) => { e.preventDefault(); setTermsOpen(true); }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      Syarat &amp; Ketentuan
+                    </Anchor>
+                  </Text>
+                }
                 checked={tncAccepted}
                 onChange={(e) => setTncAccepted(e.currentTarget.checked)}
               />

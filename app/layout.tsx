@@ -29,6 +29,11 @@ export const metadata: Metadata = {
   description:
     'Temukan dan ikuti berbagai kegiatan alumni SMAN 1 Bulukumba. Reuni, seminar, olahraga, dan banyak lagi.',
   keywords: 'ikasmagabulukumba, alumni, event, bulukumba, sman 1 bulukumba',
+  authors: [{ name: 'AyoLari Team' }],
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/favicon.ico',
+  },
   openGraph: {
     title: 'IKASMAGABULUKUMBA — Event Alumni',
     description:

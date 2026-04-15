@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDisclosure } from '@mantine/hooks';
 import {
   Box,
@@ -17,9 +18,9 @@ import {
 import { IconSchool } from '@tabler/icons-react';
 
 const NAV_LINKS = [
-  { href: '#upcoming', label: 'Upcoming' },
-  { href: '#events', label: 'Semua Event' },
-  { href: '#footer', label: 'Kontak' },
+  { href: '#upcoming', label: 'Upcoming', route: false },
+  { href: '#events', label: 'Semua Event', route: false },
+  { href: '/contact', label: 'Kontak', route: true },
 ];
 
 interface NavbarLandingPageData {
@@ -32,6 +33,7 @@ interface NavbarLandingPageData {
 }
 
 export function Navbar() {
+  const router = useRouter();
   const [opened, { toggle, close }] = useDisclosure(false);
   const [landingPageData, setLandingPageData] = useState<NavbarLandingPageData | null>(null);
 
@@ -54,9 +56,13 @@ export function Navbar() {
   const apiData = landingPageData?.data || {};
   const logoUrl = apiData.logo_url;
 
-  const scrollTo = (id: string) => {
+  const navigate = (link: { href: string; route: boolean }) => {
     close();
-    document.querySelector(id)?.scrollIntoView({ behavior: 'smooth' });
+    if (link.route) {
+      router.push(link.href);
+    } else {
+      document.querySelector(link.href)?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   return (
@@ -100,7 +106,7 @@ export function Navbar() {
                 fw={500}
                 size="sm"
                 style={{ textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer' }}
-                onClick={() => scrollTo(link.href)}
+                onClick={() => navigate(link)}
               >
                 {link.label}
               </Anchor>
@@ -108,7 +114,7 @@ export function Navbar() {
             <Button
               size="sm"
               radius="xl"
-              onClick={() => scrollTo('#events')}
+              onClick={() => navigate({ href: '#events', route: false })}
             >
               Daftar Event
             </Button>
@@ -151,12 +157,12 @@ export function Navbar() {
               fw={500}
               size="md"
               style={{ cursor: 'pointer' }}
-              onClick={() => scrollTo(link.href)}
+              onClick={() => navigate(link)}
             >
               {link.label}
             </Text>
           ))}
-          <Button radius="xl" fullWidth onClick={() => scrollTo('#events')}>
+          <Button radius="xl" fullWidth onClick={() => navigate({ href: '#events', route: false })}>
             Daftar Event
           </Button>
         </Stack>

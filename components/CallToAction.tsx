@@ -101,7 +101,7 @@ export function CallToAction() {
           >
             Gabung Event Sekarang
           </Button>
-          <Button
+          {/* <Button
             size="lg"
             radius="xl"
             variant="outline"
@@ -112,7 +112,7 @@ export function CallToAction() {
             }}
           >
             Pelajari Lebih Lanjut
-          </Button>
+          </Button> */}
         </Group>
       </Container>
     </Box>
