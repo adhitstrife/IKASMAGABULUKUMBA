@@ -105,6 +105,9 @@ export default function EventDetailPage() {
   const [promoCode, setPromoCode] = useState('');
   const [tncAccepted, setTncAccepted] = useState(false);
 
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
   // Payment channel state
   const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
   const [paymentChannelsLoading, setPaymentChannelsLoading] = useState(false);
@@ -253,15 +256,31 @@ export default function EventDetailPage() {
       id_number: buyerData.id_number,
       quantity,
       tickets: ticketsData,
+      payment_method: selectedPaymentChannel,
       promo_code: promoCode || undefined,
       tnc_accepted: tncAccepted,
-      payment_channel_code: selectedPaymentChannel ?? undefined,
     };
 
-    console.log('Checkout payload:', payload);
-    // TODO: Send to backend
-    alert('Pesanan berhasil! (Mock)');
-    setCheckoutOpen(false);
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+    try {
+      const res = await fetch('/api/registrations/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setCheckoutError(json?.message ?? json?.error ?? 'Terjadi kesalahan. Silakan coba lagi.');
+        return;
+      }
+      setCheckoutOpen(false);
+      alert('Pendaftaran berhasil! Silakan selesaikan pembayaran sesuai instruksi yang dikirim ke email Anda.');
+    } catch {
+      setCheckoutError('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+    } finally {
+      setCheckoutLoading(false);
+    }
   };
 
   if (loading) {
@@ -806,13 +825,17 @@ export default function EventDetailPage() {
                 onChange={(e) => setTncAccepted(e.currentTarget.checked)}
               />
 
+              {checkoutError && (
+                <Text c="red" size="sm">{checkoutError}</Text>
+              )}
               <Group justify="space-between">
-                <Button variant="subtle" onClick={() => setActiveStep(2)}>
+                <Button variant="subtle" onClick={() => setActiveStep(2)} disabled={checkoutLoading}>
                   Kembali
                 </Button>
                 <Button
                   onClick={handleCheckout}
-                  disabled={!tncAccepted || !selectedPaymentChannel}
+                  disabled={!tncAccepted || !selectedPaymentChannel || checkoutLoading}
+                  loading={checkoutLoading}
                 >
                   Konfirmasi & Bayar
                 </Button>
