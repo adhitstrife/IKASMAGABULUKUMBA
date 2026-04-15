@@ -275,7 +275,11 @@ export default function EventDetailPage() {
         return;
       }
       setCheckoutOpen(false);
-      alert('Pendaftaran berhasil! Silakan selesaikan pembayaran sesuai instruksi yang dikirim ke email Anda.');
+      const paymentUrl = json?.payment_url;
+      if (paymentUrl) {
+        window.open(paymentUrl, '_blank');
+      }
+      alert('Pendaftaran berhasil! Redirecting ke halaman pembayaran...');
     } catch {
       setCheckoutError('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     } finally {
