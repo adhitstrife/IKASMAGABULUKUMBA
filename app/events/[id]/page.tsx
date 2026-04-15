@@ -171,9 +171,11 @@ export default function EventDetailPage() {
   };
 
   const handleSelectTicket = (ticketId: string) => {
+    const ticket = tickets.find((t) => t.id === ticketId);
+    const initialQty = ticket?.min_per_order ?? 1;
     setSelectedTicketId(ticketId);
-    setQuantity(1);
-    setTicketsData([{ bib_name: '', shirt_size: '' }]);
+    setQuantity(initialQty);
+    setTicketsData(Array(initialQty).fill(null).map(() => ({ bib_name: '', shirt_size: '' })));
     setBuyerData({ first_name: '', last_name: '', email: '', phone: '', id_number: '' });
     setPromoCode('');
     setTncAccepted(false);
@@ -435,50 +437,71 @@ export default function EventDetailPage() {
                   const isExpired = new Date(ticket.sale_end) < new Date();
 
                   return (
-                    <Paper key={ticket.id} withBorder radius="xl" p="md">
-                      <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
-                        <Box style={{ flex: 1 }}>
-                          <Group gap="xs" mb={4}>
-                            <IconTicket size={16} color="#228be6" />
-                            <Text fw={700} size="sm">{ticket.name}</Text>
+                    <Paper key={ticket.id} withBorder radius="xl" p="xl">
+                      <Stack gap="sm">
+                        {/* Header */}
+                        <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
+                          <Group gap="xs" align="center">
+                            <IconTicket size={22} color="#228be6" />
+                            <Text fw={800} size="lg">{ticket.name}</Text>
                             {!ticket.is_active && (
-                              <Badge color="gray" size="xs">Nonaktif</Badge>
+                              <Badge color="gray" size="sm" radius="xl">Nonaktif</Badge>
                             )}
                             {isSoldOut && (
-                              <Badge color="red" size="xs">Habis</Badge>
+                              <Badge color="red" size="sm" radius="xl">Habis Terjual</Badge>
+                            )}
+                            {isExpired && !isSoldOut && (
+                              <Badge color="orange" size="sm" radius="xl">Penjualan Berakhir</Badge>
                             )}
                           </Group>
-                          {ticket.description && (
-                            <Text size="xs" c="dimmed" lineClamp={3} mb={6} style={{ whiteSpace: 'pre-line' }}>
-                              {ticket.description}
-                            </Text>
-                          )}
-                          <Group gap="lg" wrap="wrap">
-                            <Group gap={4} c="dimmed">
-                              <IconClock size={12} />
-                              <Text size="xs">
-                                Sampai {formatDate(ticket.sale_end)}
-                              </Text>
-                            </Group>
-                            <Text size="xs" c="dimmed">
-                              Sisa {availableQty} tiket
-                            </Text>
-                          </Group>
-                        </Box>
-                        <Box style={{ textAlign: 'right' }}>
-                          <Text fw={800} size="lg" c={ticket.price_cents === 0 ? 'green' : 'dark'} mb={8}>
+                          <Text fw={900} size="xl" c={ticket.price_cents === 0 ? 'green' : '#1971c2'}>
                             {ticket.price_cents === 0 ? 'Gratis' : formatPrice(ticket.price_cents)}
                           </Text>
+                        </Group>
+
+                        {/* Description */}
+                        {ticket.description && (
+                          <Text size="sm" c="dimmed" style={{ whiteSpace: 'pre-line', lineHeight: 1.7 }} lineClamp={4}>
+                            {ticket.description}
+                          </Text>
+                        )}
+
+                        <Divider />
+
+                        {/* Info row */}
+                        <Group justify="space-between" wrap="wrap" gap="xs">
+                          <Group gap="xl" wrap="wrap">
+                            <Box>
+                              <Text size="xs" c="dimmed" fw={500}>Penjualan Berakhir</Text>
+                              <Group gap={4} mt={2}>
+                                <IconClock size={14} color="#868e96" />
+                                <Text size="sm" fw={600}>{formatDate(ticket.sale_end)}</Text>
+                              </Group>
+                            </Box>
+                            <Box>
+                              <Text size="xs" c="dimmed" fw={500}>Sisa Tiket</Text>
+                              <Text size="sm" fw={600} mt={2} c={availableQty <= 10 ? 'red' : 'dark'}>
+                                {availableQty} tiket tersisa
+                              </Text>
+                            </Box>
+                            <Box>
+                              <Text size="xs" c="dimmed" fw={500}>Per Pesanan</Text>
+                              <Text size="sm" fw={600} mt={2}>
+                                Maks. {ticket.max_per_order} tiket
+                              </Text>
+                            </Box>
+                          </Group>
                           <Button
-                            size="sm"
+                            size="md"
                             radius="xl"
                             disabled={isSoldOut || isExpired || !ticket.is_active}
                             onClick={() => handleSelectTicket(ticket.id)}
+                            style={{ minWidth: 130 }}
                           >
-                            {isSoldOut ? 'Habis' : 'Buy'}
+                            {isSoldOut ? 'Habis Terjual' : isExpired ? 'Berakhir' : 'Daftar Sekarang'}
                           </Button>
-                        </Box>
-                      </Group>
+                        </Group>
+                      </Stack>
                     </Paper>
                   );
                 })}
@@ -558,27 +581,35 @@ export default function EventDetailPage() {
           {/* Step 1: Quantity */}
           <Stepper.Step label="Jumlah Tiket" description="Pilih jumlah">
             <Stack gap="md">
-              <NumberInput
-                label="Jumlah Tiket"
-                min={1}
-                max={10}
-                value={quantity}
-                onChange={handleQuantityChange}
-              />
-              <Text size="sm" c="dimmed">
-                Harga per tiket:{' '}
-                {selectedTicketId
-                  ? formatPrice(
-                      tickets.find((t) => t.id === selectedTicketId)?.price_cents || 0
-                    )
-                  : '-'}
-              </Text>
-              <Button
-                onClick={() => setActiveStep(1)}
-                disabled={quantity < 1}
-              >
-                Lanjutkan
-              </Button>
+              {(() => {
+                const selectedTicket = tickets.find((t) => t.id === selectedTicketId);
+                const minQty = selectedTicket?.min_per_order ?? 1;
+                const maxQty = selectedTicket?.max_per_order ?? 10;
+                return (
+                  <>
+                    <NumberInput
+                      label="Jumlah Tiket"
+                      description={`Minimum ${minQty} tiket, maksimum ${maxQty} tiket per pesanan`}
+                      min={minQty}
+                      max={maxQty}
+                      value={quantity}
+                      onChange={handleQuantityChange}
+                    />
+                    <Text size="sm" c="dimmed">
+                      Harga per tiket:{' '}
+                      {selectedTicketId
+                        ? formatPrice(selectedTicket?.price_cents || 0)
+                        : '-'}
+                    </Text>
+                    <Button
+                      onClick={() => setActiveStep(1)}
+                      disabled={quantity < minQty || quantity > maxQty}
+                    >
+                      Lanjutkan
+                    </Button>
+                  </>
+                );
+              })()}
             </Stack>
           </Stepper.Step>
 

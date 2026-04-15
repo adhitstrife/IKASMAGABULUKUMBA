@@ -3,7 +3,7 @@ import { NextResponse, NextRequest } from 'next/server';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const orgSecretKey = searchParams.get('key') || process.env.ORG_SECRET_KEY;
+    const orgSecretKey = process.env.ORG_SECRET_KEY;
     const backendUrl = process.env.BACKEND_URL;
 
     if (!orgSecretKey || !backendUrl) {
