@@ -35,6 +35,15 @@ import {
 import { CATEGORY_COLORS, CATEGORY_LABELS } from '@/data/events';
 import { formatDate, formatPrice } from '@/lib/utils';
 
+interface PaymentChannel {
+  code: string;
+  name: string;
+  icon_url?: string | null;
+  type: string;
+  fee?: { flat: number; percent: number };
+  active: boolean;
+}
+
 interface Ticket {
   id: string;
   name: string;
@@ -95,6 +104,13 @@ export default function EventDetailPage() {
   const [ticketsData, setTicketsData] = useState<Array<{ bib_name: string; shirt_size: string }>>([]);
   const [promoCode, setPromoCode] = useState('');
   const [tncAccepted, setTncAccepted] = useState(false);
+
+  // Payment channel state
+  const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
+  const [paymentChannelsLoading, setPaymentChannelsLoading] = useState(false);
+  const [selectedPaymentChannel, setSelectedPaymentChannel] = useState<string | null>(null);
+  const [transferFee, setTransferFee] = useState<number>(0);
+  const [feeLoading, setFeeLoading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -158,8 +174,20 @@ export default function EventDetailPage() {
     setBuyerData({ first_name: '', last_name: '', email: '', phone: '', id_number: '' });
     setPromoCode('');
     setTncAccepted(false);
+    setSelectedPaymentChannel(null);
+    setTransferFee(0);
     setActiveStep(0);
     setCheckoutOpen(true);
+    // Fetch payment channels
+    setPaymentChannelsLoading(true);
+    fetch('/api/registrations/payment-channels')
+      .then((r) => r.json())
+      .then((json) => {
+        const channels = Array.isArray(json) ? json : (json?.data ?? []);
+        setPaymentChannels(channels.filter((c: PaymentChannel) => c.active !== false));
+      })
+      .catch(() => {})
+      .finally(() => setPaymentChannelsLoading(false));
   };
 
   const handleQuantityChange = (value: number | string) => {
@@ -179,6 +207,25 @@ export default function EventDetailPage() {
 
   const handleBuyerDataChange = (field: keyof typeof buyerData, value: string) => {
     setBuyerData({ ...buyerData, [field]: value });
+  };
+
+  const handlePaymentChannelSelect = (code: string) => {
+    setSelectedPaymentChannel(code);
+    const baseAmount = selectedTicketId && event
+      ? (event.additions.flatMap((a) => a.tickets).find((t) => t.id === selectedTicketId)?.price_cents || 0) * quantity
+      : 0;
+    if (baseAmount > 0) {
+      setFeeLoading(true);
+      setTransferFee(0);
+      fetch(`/api/registrations/fee-calculator?code=${encodeURIComponent(code)}&amount=${baseAmount}`)
+        .then((r) => r.json())
+        .then((json) => {
+          const fee = json?.data?.[0]?.total_fee?.customer ?? 0;
+          setTransferFee(typeof fee === 'number' ? fee : 0);
+        })
+        .catch(() => {})
+        .finally(() => setFeeLoading(false));
+    }
   };
 
   const handleCheckout = async () => {
@@ -208,6 +255,7 @@ export default function EventDetailPage() {
       tickets: ticketsData,
       promo_code: promoCode || undefined,
       tnc_accepted: tncAccepted,
+      payment_channel_code: selectedPaymentChannel ?? undefined,
     };
 
     console.log('Checkout payload:', payload);
@@ -435,6 +483,9 @@ export default function EventDetailPage() {
           <section>
             <Text fw={700} size="md" c="#111827" mb={6}>2. Pembayaran</Text>
             <Text>Pembayaran tiket harus dilakukan melalui metode pembayaran yang tersedia di platform. Setiap transaksi pembayaran akan diproses sesuai dengan informasi yang Anda berikan. Platform mengambil biaya 2.5% dari penerimaan penyelenggara acara.</Text>
+            <Box style={{ backgroundColor: '#fff3cd', borderLeft: '4px solid #f59f00', padding: '10px 14px', marginTop: 10 }}>
+              <Text fw={600} c="#6d4c00" size="sm">⚠️ Biaya Transfer Pembayaran: Setiap biaya transfer atau biaya layanan yang dikenakan oleh metode pembayaran yang dipilih (virtual account, e-wallet, minimarket, dll.) sepenuhnya menjadi tanggung jawab pembeli tiket.</Text>
+            </Box>
           </section>
           <section>
             <Text fw={700} size="md" c="#111827" mb={6}>3. Kebijakan Refund - PENTING</Text>
@@ -645,6 +696,76 @@ export default function EventDetailPage() {
                     </Text>
                   </Group>
                   <Divider />
+                  {/* Payment Channels */}
+                  <Box mt={4}>
+                    <Text size="sm" fw={500} mb={8}>
+                      Metode Pembayaran <span style={{ color: '#fa5252' }}>*</span>
+                    </Text>
+                    {paymentChannelsLoading ? (
+                      <SimpleGrid cols={4} spacing="xs">
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                          <Skeleton key={i} height={72} radius="md" />
+                        ))}
+                      </SimpleGrid>
+                    ) : paymentChannels.length === 0 ? (
+                      <Text c="dimmed" size="sm">Tidak ada metode pembayaran tersedia.</Text>
+                    ) : (
+                      <SimpleGrid cols={{ base: 3, xs: 4 }} spacing="xs">
+                        {paymentChannels.map((ch) => {
+                          const selected = selectedPaymentChannel === ch.code;
+                          return (
+                            <Box
+                              key={ch.code}
+                              onClick={() => handlePaymentChannelSelect(ch.code)}
+                              style={{
+                                cursor: 'pointer',
+                                border: `${selected ? 2 : 1}px solid ${selected ? '#228be6' : '#dee2e6'}`,
+                                borderRadius: 8,
+                                backgroundColor: selected ? '#e7f5ff' : '#fff',
+                                padding: '8px 6px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 4,
+                                transition: 'all 0.15s',
+                              }}
+                            >
+                              {ch.icon_url ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={ch.icon_url}
+                                  alt={ch.name}
+                                  style={{ height: 30, width: 'auto', objectFit: 'contain', maxWidth: 56 }}
+                                />
+                              ) : (
+                                <Box style={{ height: 30, display: 'flex', alignItems: 'center' }}>
+                                  <Text size="xs" fw={700} c="dimmed">{ch.code.slice(0, 4)}</Text>
+                                </Box>
+                              )}
+                              <Text
+                                size="xs"
+                                fw={selected ? 700 : 500}
+                                c={selected ? '#1971c2' : 'dark'}
+                                ta="center"
+                                style={{ lineHeight: 1.2, fontSize: 10 }}
+                              >
+                                {ch.name}
+                              </Text>
+                            </Box>
+                          );
+                        })}
+                      </SimpleGrid>
+                    )}
+                  </Box>
+                  {selectedPaymentChannel && (
+                    <Group justify="space-between">
+                      <Text c="dimmed" size="sm">Biaya Transfer:</Text>
+                      <Text fw={600} size="sm" c={feeLoading ? 'dimmed' : undefined}>
+                        {feeLoading ? 'Menghitung...' : formatPrice(transferFee)}
+                      </Text>
+                    </Group>
+                  )}
+                  <Divider />
                   <Box style={{ backgroundColor: '#e7f5ff', borderRadius: 8, padding: '10px 14px' }}>
                     <Group justify="space-between">
                       <Text fw={700} c="#1971c2">Total yang Dibayar:</Text>
@@ -652,7 +773,7 @@ export default function EventDetailPage() {
                         {selectedTicketId
                           ? formatPrice(
                               (tickets.find((t) => t.id === selectedTicketId)?.price_cents || 0) *
-                                quantity
+                                quantity + transferFee
                             )
                           : '-'}
                       </Text>
@@ -691,7 +812,7 @@ export default function EventDetailPage() {
                 </Button>
                 <Button
                   onClick={handleCheckout}
-                  disabled={!tncAccepted}
+                  disabled={!tncAccepted || !selectedPaymentChannel}
                 >
                   Konfirmasi & Bayar
                 </Button>

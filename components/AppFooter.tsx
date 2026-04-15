@@ -131,6 +131,11 @@ export function AppFooter() {
             <Text>
               Pembayaran tiket harus dilakukan melalui metode pembayaran yang tersedia di platform. Setiap transaksi pembayaran akan diproses sesuai dengan informasi yang Anda berikan. Platform mengambil biaya 2.5% dari penerimaan penyelenggara acara.
             </Text>
+            <Box style={{ backgroundColor: '#fff3cd', borderLeft: '4px solid #f59f00', padding: '10px 14px', marginTop: 10 }}>
+              <Text fw={600} c="#6d4c00" size="sm">
+                ⚠️ Biaya Transfer Pembayaran: Setiap biaya transfer atau biaya layanan yang dikenakan oleh metode pembayaran yang dipilih (virtual account, e-wallet, minimarket, dll.) sepenuhnya menjadi tanggung jawab pembeli tiket.
+              </Text>
+            </Box>
           </section>
 
           <section>
