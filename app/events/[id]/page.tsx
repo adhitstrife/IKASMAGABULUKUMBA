@@ -210,6 +210,9 @@ export default function EventDetailPage() {
     setTicketsData(newTicketsData);
   };
 
+  const isValidEmail = (email: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
   const handleBuyerDataChange = (field: keyof typeof buyerData, value: string) => {
     setBuyerData({ ...buyerData, [field]: value });
   };
@@ -667,6 +670,7 @@ export default function EventDetailPage() {
                 type="email"
                 value={buyerData.email}
                 onChange={(e) => handleBuyerDataChange('email', e.currentTarget.value)}
+                error={buyerData.email && !isValidEmail(buyerData.email) ? 'Masukkan alamat email yang valid' : undefined}
                 required
               />
               <TextInput
@@ -693,6 +697,7 @@ export default function EventDetailPage() {
                     !buyerData.first_name ||
                     !buyerData.last_name ||
                     !buyerData.email ||
+                    !isValidEmail(buyerData.email) ||
                     !buyerData.phone ||
                     !buyerData.id_number
                   }
