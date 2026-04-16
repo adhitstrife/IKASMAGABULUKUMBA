@@ -435,9 +435,9 @@ export function AppFooter() {
                 style={{ marginTop: 2, flexShrink: 0 }}
               />
               <Text c="rgba(255,255,255,0.65)" size="sm" style={{ lineHeight: 1.6 }}>
-                Jl. K.H. Wahid Hasyim No.1,
+                Jl. Pendidikan Kel. Tanaberu, Kec. Bontobahari, 
                 <br />
-                Bulukumba, Sulawesi Selatan
+                Kab. Bulukumba, Sulawesi Selatan
               </Text>
             </Group>
             <Group gap="xs">
