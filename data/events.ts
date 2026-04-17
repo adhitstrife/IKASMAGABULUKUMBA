@@ -51,7 +51,7 @@ export const events: Event[] = [
     category: 'reuni',
     image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&auto=format&fit=crop&q=80',
     description:
-      'Reuni besar-besaran seluruh angkatan alumni SMAN 1 Bulukumba. Reconnect dengan teman lama, rayakan kebersamaan, dan bangun koneksi baru.',
+      'Reuni besar-besaran seluruh angkatan alumni SMAN 3 Bulukumba. Reconnect dengan teman lama, rayakan kebersamaan, dan bangun koneksi baru.',
     isFeatured: true,
     seats: 500,
     registeredCount: 312,
@@ -109,7 +109,7 @@ export const events: Event[] = [
     id: '5',
     title: 'Bakti Sosial & Donor Darah',
     date: '2026-04-25',
-    location: 'SMAN 1 Bulukumba',
+    location: 'SMAN 3 Bulukumba',
     isOnline: false,
     price: null,
     category: 'sosial',

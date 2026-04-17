@@ -285,7 +285,7 @@ export function AppFooter() {
               size="sm"
               style={{ lineHeight: 1.75 }}
             >
-              Ikatan Alumni SMAN 1 Bulukumba. Menghubungkan alumni dari seluruh
+              Ikatan Alumni SMAN 3 Bulukumba. Menghubungkan alumni dari seluruh
               penjuru nusantara melalui kegiatan yang bermakna.
             </Text>
 
@@ -480,7 +480,7 @@ export function AppFooter() {
             © {new Date().getFullYear()} IKASMAGABULUKUMBA. All rights reserved.
           </Text>
           <Text c="rgba(255,255,255,0.35)" size="xs">
-            Dibuat dengan ❤️ untuk alumni SMAN 1 Bulukumba
+            Dibuat dengan ❤️ untuk alumni SMAN 3 Bulukumba
           </Text>
         </Group>
 

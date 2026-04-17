@@ -27,8 +27,8 @@ const theme = createTheme({
 export const metadata: Metadata = {
   title: 'IKASMAGABULUKUMBA — Event Alumni',
   description:
-    'Temukan dan ikuti berbagai kegiatan alumni SMAN 1 Bulukumba. Reuni, seminar, olahraga, dan banyak lagi.',
-  keywords: 'ikasmagabulukumba, alumni, event, bulukumba, sman 1 bulukumba',
+    'Temukan dan ikuti berbagai kegiatan alumni SMAN 3 Bulukumba. Reuni, seminar, olahraga, dan banyak lagi.',
+  keywords: 'ikasmagabulukumba, alumni, event, bulukumba, SMAN 3 bulukumba',
   authors: [{ name: 'AyoLari Team' }],
   icons: {
     icon: '/favicon.ico',
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'IKASMAGABULUKUMBA — Event Alumni',
     description:
-      'Temukan dan ikuti berbagai kegiatan alumni SMAN 1 Bulukumba.',
+      'Temukan dan ikuti berbagai kegiatan alumni SMAN 3 Bulukumba.',
     type: 'website',
   },
 };

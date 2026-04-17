@@ -116,7 +116,7 @@ export function HeroSection() {
               }}
             />
             <Text size="sm" fw={600} c="white">
-              Alumni SMAN 1 Bulukumba
+              Alumni SMAN 3 Bulukumba
             </Text>
           </Box>
 
