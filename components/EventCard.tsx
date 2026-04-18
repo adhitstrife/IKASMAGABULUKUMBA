@@ -1,6 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useRef } from 'react';
+import {QRCodeSVG} from 'qrcode.react';
 import {
   Box,
   Card,
@@ -18,6 +20,7 @@ import {
   IconWifi,
   IconUsers,
   IconShare2,
+  IconQrcode,
 } from '@tabler/icons-react';
 import { Event, CATEGORY_COLORS, CATEGORY_LABELS } from '@/data/events';
 import { formatDate, formatPrice, getSeatPercent } from '@/lib/utils';
@@ -29,6 +32,7 @@ interface EventCardProps {
 
 export function EventCard({ event, featured = false }: EventCardProps) {
   const router = useRouter();
+  const qrRef = useRef<HTMLDivElement>(null);
   const seatPercent = getSeatPercent(event.registeredCount, event.seats);
   const isAlmostFull = seatPercent >= 80;
 
@@ -65,6 +69,27 @@ export function EventCard({ event, featured = false }: EventCardProps) {
       } catch (err) {
         console.error('Failed to copy:', err);
       }
+    }
+  };
+
+  const handleDownloadQR = async () => {
+    const svgElement = qrRef.current?.querySelector('svg');
+    if (svgElement) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const img = new Image();
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx?.drawImage(img, 0, 0);
+        const url = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `event-${event.id}-qr.png`;
+        link.click();
+      };
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
     }
   };
 
@@ -136,6 +161,10 @@ export function EventCard({ event, featured = false }: EventCardProps) {
 
       {/* Content */}
       <Box p="md" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Hidden QR Code for download */}
+        <div style={{ display: 'none' }} ref={qrRef}>
+          <QRCodeSVG value={`${window.location.origin}/events/${event.id}`} size={256} />
+        </div>
         <Stack gap="xs" style={{ flex: 1 }}>
           <Text fw={700} size={featured ? 'lg' : 'md'} lineClamp={2} style={{ lineHeight: 1.35 }}>
             {event.title}
@@ -193,13 +222,27 @@ export function EventCard({ event, featured = false }: EventCardProps) {
 
         {/* Footer row */}
         <Group justify="space-between" align="center" mt="md">
-          <Text
-            fw={700}
-            size={featured ? 'lg' : 'md'}
-            c={event.price === null ? 'green' : 'dark'}
-          >
-            {formatPrice(event.price)}
-          </Text>
+          <Box>
+            {event.price === null ? (
+              <Text fw={700} size={featured ? 'lg' : 'md'} c="green">
+                Gratis
+              </Text>
+            ) : event.normalPrice && event.normalPrice > event.price ? (
+              <Group gap="xs" align="center">
+                <Text fw={700} size={featured ? 'lg' : 'md'} c="dark">
+                  {formatPrice(event.price)}
+                </Text>
+                <Text fw={600} size="sm" c="dimmed" style={{ textDecoration: 'line-through' }}>
+                  {formatPrice(event.normalPrice)}
+                </Text>
+                <Badge size="xs" color="red">Diskon</Badge>
+              </Group>
+            ) : (
+              <Text fw={700} size={featured ? 'lg' : 'md'} c="dark">
+                {formatPrice(event.price)}
+              </Text>
+            )}
+          </Box>
           <Group gap="xs">
             <Tooltip label="Bagikan event" position="top">
               <ActionIcon
@@ -210,6 +253,17 @@ export function EventCard({ event, featured = false }: EventCardProps) {
                 aria-label="Share event"
               >
                 <IconShare2 size={16} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Download QR Code" position="top">
+              <ActionIcon
+                size="md"
+                radius="xl"
+                variant="light"
+                onClick={handleDownloadQR}
+                aria-label="Download QR code"
+              >
+                <IconQrcode size={16} />
               </ActionIcon>
             </Tooltip>
             <Button size="xs" radius="xl" onClick={handleDaftarClick}>

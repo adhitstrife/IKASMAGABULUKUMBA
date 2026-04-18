@@ -49,6 +49,7 @@ interface Ticket {
   name: string;
   description: string | null;
   price_cents: number;
+  normal_price?: number;
   quantity: number;
   quantity_sold: number;
   quantity_reserved: number | null;
@@ -516,9 +517,27 @@ export default function EventDetailPage() {
                           <Stack align="center" justify="center" gap="sm" style={{ minWidth: 120 }}>
                             <Box style={{ textAlign: 'center' }}>
                               <Text size="xs" c="dimmed" fw={500} style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>Harga</Text>
-                              <Text fw={900} size="xl" c={ticket.price_cents === 0 ? 'green' : '#1971c2'} style={{ lineHeight: 1.2 }}>
-                                {ticket.price_cents === 0 ? 'Gratis' : formatPrice(ticket.price_cents)}
-                              </Text>
+                              {ticket.price_cents === 0 ? (
+                                <Text fw={900} size="xl" c="green" style={{ lineHeight: 1.2 }}>
+                                  Gratis
+                                </Text>
+                              ) : ticket.normal_price && ticket.normal_price > ticket.price_cents ? (
+                                <Box>
+                                  <Group justify="center" gap={4}>
+                                    <Text fw={900} size="xl" c="#1971c2" style={{ lineHeight: 1.2 }}>
+                                      {formatPrice(ticket.price_cents)}
+                                    </Text>
+                                    <Text fw={600} size="sm" c="dimmed" style={{ lineHeight: 1.2, textDecoration: 'line-through' }}>
+                                      {formatPrice(ticket.normal_price)}
+                                    </Text>
+                                  </Group>
+                                  <Badge size="sm" color="red" mt={4}>Diskon</Badge>
+                                </Box>
+                              ) : (
+                                <Text fw={900} size="xl" c="#1971c2" style={{ lineHeight: 1.2 }}>
+                                  {formatPrice(ticket.price_cents)}
+                                </Text>
+                              )}
                             </Box>
                             <Button
                               size="sm"
