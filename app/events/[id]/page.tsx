@@ -280,11 +280,18 @@ export default function EventDetailPage() {
         setCheckoutError(json?.message ?? json?.error ?? 'Terjadi kesalahan. Silakan coba lagi.');
         return;
       }
+      console.log('Checkout response:', json);
       const paymentUrl = json?.payment_url ?? json?.registration?.payment_url;
+      console.log('Payment URL:', paymentUrl);
       if (paymentUrl) {
+        console.log('Opening payment URL in new tab');
         window.open(paymentUrl, '_blank');
+        // Delay modal close to ensure window.open executes
+        setTimeout(() => setCheckoutOpen(false), 100);
+      } else {
+        console.warn('No payment URL found in response');
+        setCheckoutOpen(false);
       }
-      setCheckoutOpen(false);
     } catch {
       setCheckoutError('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     } finally {
