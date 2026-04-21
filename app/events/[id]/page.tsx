@@ -284,10 +284,9 @@ export default function EventDetailPage() {
       const paymentUrl = json?.payment_url ?? json?.registration?.payment_url;
       console.log('Payment URL:', paymentUrl);
       if (paymentUrl) {
-        console.log('Opening payment URL in new tab');
-        window.open(paymentUrl, '_blank');
-        // Delay modal close to ensure window.open executes
-        setTimeout(() => setCheckoutOpen(false), 100);
+        console.log('Redirecting to payment URL');
+        // Redirect in the same tab
+        window.location.href = paymentUrl;
       } else {
         console.warn('No payment URL found in response');
         setCheckoutOpen(false);
