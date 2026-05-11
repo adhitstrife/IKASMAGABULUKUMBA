@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/utils';
 import { Navbar } from '@/components/Navbar';
 import { AppFooter } from '@/components/AppFooter';
 import { NewsItem } from '@/types/news';
+import { IconDownload } from '@tabler/icons-react';
 
 export default function BeritaPage() {
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -84,6 +85,7 @@ export default function BeritaPage() {
                     const coverAsset = item.assets.find((a) => a.type === 'image' && a.is_cover);
                     const imageUrl = coverAsset?.url || item.assets.find((a) => a.type === 'image')?.url;
                     const plainText = stripHtml(item.description);
+                    const fileAssets = item.assets.filter((a) => a.type === 'file');
 
                     return (
                       <Grid.Col key={item.id} span={{ base: 12, sm: 6 }}>
@@ -113,10 +115,17 @@ export default function BeritaPage() {
                             </Card.Section>
                           )}
                           <Card.Section p="md" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                            <Group justify="space-between" mb="xs">
-                              <Badge color="blue" variant="light" size="sm">
-                                {item.is_published ? 'Dipublikasikan' : 'Draft'}
-                              </Badge>
+                            <Group justify="space-between" mb="xs" wrap="wrap">
+                              <Group gap={6}>
+                                <Badge color="blue" variant="light" size="sm">
+                                  {item.is_published ? 'Dipublikasikan' : 'Draft'}
+                                </Badge>
+                                {fileAssets.length > 0 && (
+                                  <Badge color="green" variant="light" size="sm" leftSection={<IconDownload size={12} />}>
+                                    {fileAssets.length} File
+                                  </Badge>
+                                )}
+                              </Group>
                               <Text size="xs" c="dimmed">
                                 {formatDate(item.published_at)}
                               </Text>

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { NewsItem } from '@/types/news';
 import { formatDate } from '@/lib/utils';
+import { IconDownload } from '@tabler/icons-react';
 
 export function BeritaSection() {
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -64,6 +65,7 @@ export function BeritaSection() {
                 const coverAsset = item.assets.find((a) => a.type === 'image' && a.is_cover);
                 const imageUrl = coverAsset?.url || item.assets.find((a) => a.type === 'image')?.url;
                 const plainText = stripHtml(item.description);
+                const fileAssets = item.assets.filter((a) => a.type === 'file');
 
                 return (
                   <Card key={item.id} withBorder radius="lg" style={{ overflow: 'hidden', cursor: 'pointer' }} component={Link} href={`/berita/${item.id}`}>
@@ -94,9 +96,16 @@ export function BeritaSection() {
                     )}
                     <Card.Section p="md">
                       <Group justify="space-between" mb="xs">
-                        <Badge color="blue" variant="light" size="sm">
-                          {item.is_published ? 'Dipublikasikan' : 'Draft'}
-                        </Badge>
+                        <Group gap={6}>
+                          <Badge color="blue" variant="light" size="sm">
+                            {item.is_published ? 'Dipublikasikan' : 'Draft'}
+                          </Badge>
+                          {fileAssets.length > 0 && (
+                            <Badge color="green" variant="light" size="sm" leftSection={<IconDownload size={12} />}>
+                              {fileAssets.length} File
+                            </Badge>
+                          )}
+                        </Group>
                         <Text size="xs" c="dimmed">
                           {formatDate(item.published_at)}
                         </Text>

@@ -16,7 +16,7 @@ import {
   Modal,
   SimpleGrid,
 } from '@mantine/core';
-import { IconArrowLeft } from '@tabler/icons-react';
+import { IconArrowLeft, IconDownload } from '@tabler/icons-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
 import { Navbar } from '@/components/Navbar';
@@ -206,14 +206,14 @@ export default function BeritaDetailPage() {
                 />
 
                 {/* Media Gallery Section */}
-                {(images.length > 1 || videos.length > 0) && (
+                {(images.length > 0 || videos.length > 0) && (
                   <>
                     <Title order={3} mb="md">
                       Media Gallery
                     </Title>
 
                     {/* Images Gallery */}
-                    {images.length > 1 && (
+                    {images.length > 0 && (
                       <Box mb="lg">
                         <Text size="sm" fw={500} mb="md" c="dimmed">
                           Gambar ({images.length})
@@ -299,12 +299,14 @@ export default function BeritaDetailPage() {
                           {files.map((file) => (
                             <Button
                               key={file.id}
-                              variant="outline"
+                              variant="filled"
+                              color="blue"
                               component="a"
                               href={file.url}
                               target="_blank"
                               rel="noopener noreferrer"
                               fullWidth
+                              leftSection={<IconDownload size={18} />}
                             >
                               Download File
                             </Button>
