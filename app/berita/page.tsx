@@ -96,8 +96,8 @@ export default function BeritaPage() {
                               <Image
                                 src={getProxiedImageUrl(imageUrl)}
                                 alt={item.title}
-                                height={250}
                                 fit="cover"
+                                style={{ aspectRatio: '16 / 9' }}
                               />
                             </Card.Section>
                           ) : (

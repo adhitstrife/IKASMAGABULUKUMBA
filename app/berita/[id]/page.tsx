@@ -153,8 +153,7 @@ export default function BeritaDetailPage() {
                     radius="lg"
                     mb="xl"
                     fit="cover"
-                    height={400}
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', aspectRatio: '16 / 9' }}
                     onClick={() => {
                       setSelectedMedia(displayImage);
                       setModalOpened(true);
@@ -237,8 +236,8 @@ export default function BeritaDetailPage() {
                               <Image
                                 src={getProxiedImageUrl(image.url)}
                                 alt="Gallery"
-                                height={150}
                                 fit="cover"
+                                style={{ aspectRatio: '1 / 1' }}
                               />
                               {image.is_cover && (
                                 <Badge

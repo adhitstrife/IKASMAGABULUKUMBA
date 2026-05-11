@@ -77,7 +77,7 @@ export function BeritaSection() {
                           alt={item.title}
                           radius="lg"
                           fit="cover"
-                          height={200}
+                          style={{ aspectRatio: '16 / 9' }}
                         />
                       </Card.Section>
                     ) : (
