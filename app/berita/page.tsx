@@ -2,6 +2,7 @@
 
 import { Box, Container, Grid, Card, Image, Title, Text, Badge, Button, Skeleton, Group } from '@mantine/core';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
 import { Navbar } from '@/components/Navbar';
 import { AppFooter } from '@/components/AppFooter';
