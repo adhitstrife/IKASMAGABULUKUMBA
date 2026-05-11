@@ -288,33 +288,33 @@ export default function BeritaDetailPage() {
                         </SimpleGrid>
                       </Box>
                     )}
-
-                    {/* Files Section */}
-                    {files.length > 0 && (
-                      <Box>
-                        <Text size="sm" fw={500} mb="md" c="dimmed">
-                          File ({files.length})
-                        </Text>
-                        <SimpleGrid cols={{ base: 1 }} spacing="md">
-                          {files.map((file) => (
-                            <Button
-                              key={file.id}
-                              variant="filled"
-                              color="blue"
-                              component="a"
-                              href={file.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              fullWidth
-                              leftSection={<IconDownload size={18} />}
-                            >
-                              Download File
-                            </Button>
-                          ))}
-                        </SimpleGrid>
-                      </Box>
-                    )}
                   </>
+                )}
+
+                {/* Files Section */}
+                {files.length > 0 && (
+                  <Box mb="xl">
+                    <Title order={3} mb="md">
+                      File
+                    </Title>
+                    <SimpleGrid cols={{ base: 1 }} spacing="md">
+                      {files.map((file) => (
+                        <Button
+                          key={file.id}
+                          variant="filled"
+                          color="blue"
+                          component="a"
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          fullWidth
+                          leftSection={<IconDownload size={18} />}
+                        >
+                          Download File
+                        </Button>
+                      ))}
+                    </SimpleGrid>
+                  </Box>
                 )}
               </Grid.Col>
 
