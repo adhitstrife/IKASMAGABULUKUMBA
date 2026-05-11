@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { NewsItem } from '@/types/news';
 import { formatDate } from '@/lib/utils';
 import { IconDownload } from '@tabler/icons-react';
+import { getProxiedImageUrl } from '@/lib/gdrive';
 
 export function BeritaSection() {
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -72,7 +73,7 @@ export function BeritaSection() {
                     {imageUrl ? (
                       <Card.Section>
                         <Image
-                          src={imageUrl}
+                          src={getProxiedImageUrl(imageUrl)}
                           alt={item.title}
                           radius="lg"
                           fit="cover"

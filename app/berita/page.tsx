@@ -8,6 +8,7 @@ import { Navbar } from '@/components/Navbar';
 import { AppFooter } from '@/components/AppFooter';
 import { NewsItem } from '@/types/news';
 import { IconDownload } from '@tabler/icons-react';
+import { getProxiedImageUrl } from '@/lib/gdrive';
 
 export default function BeritaPage() {
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -93,7 +94,7 @@ export default function BeritaPage() {
                           {imageUrl ? (
                             <Card.Section>
                               <Image
-                                src={imageUrl}
+                                src={getProxiedImageUrl(imageUrl)}
                                 alt={item.title}
                                 height={250}
                                 fit="cover"

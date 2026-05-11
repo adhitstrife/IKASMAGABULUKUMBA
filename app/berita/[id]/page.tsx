@@ -19,6 +19,7 @@ import {
 import { IconArrowLeft, IconDownload } from '@tabler/icons-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
+import { getProxiedImageUrl } from '@/lib/gdrive';
 import { Navbar } from '@/components/Navbar';
 import { AppFooter } from '@/components/AppFooter';
 import { NewsItem, NewsAsset } from '@/types/news';
@@ -147,7 +148,7 @@ export default function BeritaDetailPage() {
                 {/* Main Image Display */}
                 {displayImage ? (
                   <Image
-                    src={displayImage.url}
+                    src={getProxiedImageUrl(displayImage.url)}
                     alt={news.title}
                     radius="lg"
                     mb="xl"
@@ -234,7 +235,7 @@ export default function BeritaDetailPage() {
                               }}
                             >
                               <Image
-                                src={image.url}
+                                src={getProxiedImageUrl(image.url)}
                                 alt="Gallery"
                                 height={150}
                                 fit="cover"
@@ -391,7 +392,7 @@ export default function BeritaDetailPage() {
       >
         {selectedMedia?.type === 'image' && (
           <Image
-            src={selectedMedia.url}
+            src={getProxiedImageUrl(selectedMedia.url)}
             alt="Full view"
             fit="contain"
           />
