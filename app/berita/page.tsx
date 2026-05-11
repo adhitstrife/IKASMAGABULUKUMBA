@@ -32,7 +32,7 @@ export default function BeritaPage() {
   }, []);
 
   const NewsCardSkeleton = () => (
-    <Card withBorder radius="lg" overflow="hidden">
+    <Card withBorder radius="lg" style={{ overflow: 'hidden' }}>
       <Card.Section>
         <Skeleton height={250} />
       </Card.Section>
@@ -81,7 +81,7 @@ export default function BeritaPage() {
 
                     return (
                       <Grid.Col key={item.id} span={{ base: 12, sm: 6 }}>
-                        <Card withBorder radius="lg" overflow="hidden" h="100%" style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }} component={Link} href={`/berita/${item.id}`}>
+                        <Card withBorder radius="lg" h="100%" style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer', overflow: 'hidden' }} component={Link} href={`/berita/${item.id}`}>
                           {imageUrl && (
                             <Card.Section>
                               <Image
