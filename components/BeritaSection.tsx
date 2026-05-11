@@ -1,9 +1,10 @@
 'use client';
 
-import { Box, Container, SimpleGrid, Image, Title, Text, Skeleton, Button } from '@mantine/core';
+import { Box, Container, SimpleGrid, Image, Title, Text, Skeleton, Button, Card, Badge, Group } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { NewsItem } from '@/types/news';
+import { formatDate } from '@/lib/utils';
 
 export function BeritaSection() {
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -30,6 +31,10 @@ export function BeritaSection() {
     fetchNews();
   }, []);
 
+  const stripHtml = (html: string) => {
+    return html.replace(/<[^>]*>/g, '').trim();
+  };
+
   return (
     <Box py={80} style={{ backgroundColor: '#f8fafc' }}>
       <Container size="lg">
@@ -51,25 +56,59 @@ export function BeritaSection() {
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
           {loading
             ? [0, 1].map((i) => (
-                <Skeleton key={i} height={200} radius="xl" />
+                <Card key={i} withBorder radius="lg" style={{ overflow: 'hidden' }}>
+                  <Skeleton height={200} radius="xl" />
+                </Card>
               ))
             : news.map((item) => {
                 const coverAsset = item.assets.find((a) => a.type === 'image' && a.is_cover);
                 const imageUrl = coverAsset?.url || item.assets.find((a) => a.type === 'image')?.url;
+                const plainText = stripHtml(item.description);
 
                 return (
-                  <Box key={item.id} component={Link} href={`/berita/${item.id}`} style={{ textDecoration: 'none' }}>
-                    {imageUrl && (
-                      <Image
-                        src={imageUrl}
-                        alt={item.title}
-                        radius="xl"
-                        fit="cover"
-                        height={200}
-                        style={{ cursor: 'pointer' }}
-                      />
+                  <Card key={item.id} withBorder radius="lg" style={{ overflow: 'hidden', cursor: 'pointer' }} component={Link} href={`/berita/${item.id}`}>
+                    {imageUrl ? (
+                      <Card.Section>
+                        <Image
+                          src={imageUrl}
+                          alt={item.title}
+                          radius="lg"
+                          fit="cover"
+                          height={200}
+                        />
+                      </Card.Section>
+                    ) : (
+                      <Card.Section>
+                        <Box
+                          style={{
+                            height: 200,
+                            backgroundColor: '#e9ecef',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Text c="dimmed">Tidak ada gambar</Text>
+                        </Box>
+                      </Card.Section>
                     )}
-                  </Box>
+                    <Card.Section p="md">
+                      <Group justify="space-between" mb="xs">
+                        <Badge color="blue" variant="light" size="sm">
+                          {item.is_published ? 'Dipublikasikan' : 'Draft'}
+                        </Badge>
+                        <Text size="xs" c="dimmed">
+                          {formatDate(item.published_at)}
+                        </Text>
+                      </Group>
+                      <Title order={4} mb="sm" lineClamp={2}>
+                        {item.title}
+                      </Title>
+                      <Text size="sm" c="dimmed" lineClamp={2}>
+                        {plainText}
+                      </Text>
+                    </Card.Section>
+                  </Card>
                 );
               })}
         </SimpleGrid>

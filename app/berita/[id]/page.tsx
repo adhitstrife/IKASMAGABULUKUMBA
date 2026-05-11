@@ -32,6 +32,10 @@ export default function BeritaDetailPage() {
   const [selectedMedia, setSelectedMedia] = useState<NewsAsset | null>(null);
   const [modalOpened, setModalOpened] = useState(false);
 
+  const stripHtml = (html: string) => {
+    return html.replace(/<[^>]*>/g, '').trim();
+  };
+
   useEffect(() => {
     const fetchNewsDetail = async () => {
       if (!id) return;
@@ -141,7 +145,7 @@ export default function BeritaDetailPage() {
               {/* Main Content */}
               <Grid.Col span={{ base: 12, md: 8 }}>
                 {/* Main Image Display */}
-                {displayImage && (
+                {displayImage ? (
                   <Image
                     src={displayImage.url}
                     alt={news.title}
@@ -155,6 +159,20 @@ export default function BeritaDetailPage() {
                       setModalOpened(true);
                     }}
                   />
+                ) : (
+                  <Box
+                    style={{
+                      height: 400,
+                      backgroundColor: '#e9ecef',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: '24px',
+                    }}
+                  >
+                    <Text c="dimmed" size="lg">Tidak ada gambar tersedia</Text>
+                  </Box>
                 )}
 
                 {/* Title and Info */}
@@ -181,12 +199,11 @@ export default function BeritaDetailPage() {
                   style={{
                     fontSize: '1rem',
                     lineHeight: 1.6,
-                    whiteSpace: 'pre-wrap',
-                    wordWrap: 'break-word',
                   }}
-                >
-                  <Text>{news.description}</Text>
-                </Box>
+                  dangerouslySetInnerHTML={{
+                    __html: news.description,
+                  }}
+                />
 
                 {/* Media Gallery Section */}
                 {(images.length > 1 || videos.length > 0) && (

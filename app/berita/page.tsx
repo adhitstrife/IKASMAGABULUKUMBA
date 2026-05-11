@@ -32,6 +32,10 @@ export default function BeritaPage() {
     fetchNews();
   }, []);
 
+  const stripHtml = (html: string) => {
+    return html.replace(/<[^>]*>/g, '').trim();
+  };
+
   const NewsCardSkeleton = () => (
     <Card withBorder radius="lg" style={{ overflow: 'hidden' }}>
       <Card.Section>
@@ -79,11 +83,12 @@ export default function BeritaPage() {
                 ? news.map((item) => {
                     const coverAsset = item.assets.find((a) => a.type === 'image' && a.is_cover);
                     const imageUrl = coverAsset?.url || item.assets.find((a) => a.type === 'image')?.url;
+                    const plainText = stripHtml(item.description);
 
                     return (
                       <Grid.Col key={item.id} span={{ base: 12, sm: 6 }}>
                         <Card withBorder radius="lg" h="100%" style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer', overflow: 'hidden' }} component={Link} href={`/berita/${item.id}`}>
-                          {imageUrl && (
+                          {imageUrl ? (
                             <Card.Section>
                               <Image
                                 src={imageUrl}
@@ -91,6 +96,20 @@ export default function BeritaPage() {
                                 height={250}
                                 fit="cover"
                               />
+                            </Card.Section>
+                          ) : (
+                            <Card.Section>
+                              <Box
+                                style={{
+                                  height: 250,
+                                  backgroundColor: '#e9ecef',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <Text c="dimmed">Tidak ada gambar</Text>
+                              </Box>
                             </Card.Section>
                           )}
                           <Card.Section p="md" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -106,7 +125,7 @@ export default function BeritaPage() {
                               {item.title}
                             </Title>
                             <Text size="sm" c="dimmed" mb="md" lineClamp={3}>
-                              {item.description}
+                              {plainText}
                             </Text>
                             <Box mt="auto">
                               <Group justify="space-between">
