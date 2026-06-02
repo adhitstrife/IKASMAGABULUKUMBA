@@ -19,7 +19,7 @@ import {
 import { IconArrowLeft, IconDownload } from '@tabler/icons-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
-import { getProxiedImageUrl } from '@/lib/gdrive';
+import { getProxiedImageUrl, getGoogleDriveVideoEmbedUrl } from '@/lib/gdrive';
 import { Navbar } from '@/components/Navbar';
 import { AppFooter } from '@/components/AppFooter';
 import { NewsItem, NewsAsset } from '@/types/news';
@@ -264,27 +264,40 @@ export default function BeritaDetailPage() {
                           Video ({videos.length})
                         </Text>
                         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                          {videos.map((video) => (
-                            <Box
-                              key={video.id}
-                              style={{
-                                position: 'relative',
-                                overflow: 'hidden',
-                                borderRadius: '8px',
-                                backgroundColor: '#000',
-                              }}
-                            >
-                              <video
-                                src={video.url}
-                                controls
+                          {videos.map((video) => {
+                            const embedUrl = getGoogleDriveVideoEmbedUrl(video.url);
+                            return (
+                              <Box
+                                key={video.id}
                                 style={{
-                                  width: '100%',
-                                  height: 'auto',
-                                  maxHeight: '250px',
+                                  position: 'relative',
+                                  overflow: 'hidden',
+                                  borderRadius: '8px',
+                                  backgroundColor: '#000',
+                                  aspectRatio: '16 / 9',
                                 }}
-                              />
-                            </Box>
-                          ))}
+                              >
+                                {embedUrl ? (
+                                  <iframe
+                                    src={embedUrl}
+                                    allow="autoplay"
+                                    style={{
+                                      width: '100%',
+                                      height: '100%',
+                                      border: 'none',
+                                    }}
+                                    allowFullScreen
+                                  />
+                                ) : (
+                                  <video
+                                    src={video.url}
+                                    controls
+                                    style={{ width: '100%', height: '100%' }}
+                                  />
+                                )}
+                              </Box>
+                            );
+                          })}
                         </SimpleGrid>
                       </Box>
                     )}

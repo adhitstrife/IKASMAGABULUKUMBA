@@ -71,3 +71,17 @@ export function getProxiedDownloadUrl(url: string): string {
 
   return url;
 }
+
+/**
+ * Get Google Drive video embed URL for use in an <iframe>
+ * Google Drive's download URLs do not support HTTP range requests or CORS
+ * required for <video> playback. Use the /preview embed URL instead.
+ * @param url Google Drive URL (any format)
+ * @returns Embed preview URL, or null if the file ID cannot be extracted
+ */
+export function getGoogleDriveVideoEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  const fileId = extractGoogleDriveFileId(url);
+  if (!fileId) return null;
+  return `https://drive.google.com/file/d/${fileId}/preview`;
+}
