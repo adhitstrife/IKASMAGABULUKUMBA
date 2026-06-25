@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { useRef } from 'react';
-import {QRCodeSVG} from 'qrcode.react';
+import { useRouter } from "next/navigation";
+import { useRef } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import {
   Box,
   Card,
@@ -13,7 +13,7 @@ import {
   Stack,
   ActionIcon,
   Tooltip,
-} from '@mantine/core';
+} from "@mantine/core";
 import {
   IconCalendar,
   IconMapPin,
@@ -21,9 +21,9 @@ import {
   IconUsers,
   IconShare2,
   IconQrcode,
-} from '@tabler/icons-react';
-import { Event, CATEGORY_COLORS, CATEGORY_LABELS } from '@/data/events';
-import { formatDate, formatPrice, getSeatPercent } from '@/lib/utils';
+} from "@tabler/icons-react";
+import { Event, CATEGORY_COLORS, CATEGORY_LABELS } from "@/data/events";
+import { formatDate, formatPrice, getSeatPercent } from "@/lib/utils";
 
 interface EventCardProps {
   event: Event;
@@ -43,6 +43,7 @@ export function EventCard({ event, featured = false }: EventCardProps) {
   const handleDaftarClick = () => {
     router.push(`/events/${event.id}`);
   };
+  console.log(event);
 
   const handleShare = async () => {
     const eventUrl = `${window.location.origin}/events/${event.id}`;
@@ -58,38 +59,39 @@ export function EventCard({ event, featured = false }: EventCardProps) {
         });
       } catch (err) {
         // User cancelled or error occurred
-        console.log('Share cancelled or error:', err);
+        console.log("Share cancelled or error:", err);
       }
     } else {
       // Fallback: copy to clipboard
       const textToCopy = `${shareText}\n${eventUrl}`;
       try {
         await navigator.clipboard.writeText(textToCopy);
-        alert('Link event disalin ke clipboard!');
+        alert("Link event disalin ke clipboard!");
       } catch (err) {
-        console.error('Failed to copy:', err);
+        console.error("Failed to copy:", err);
       }
     }
   };
 
   const handleDownloadQR = async () => {
-    const svgElement = qrRef.current?.querySelector('svg');
+    const svgElement = qrRef.current?.querySelector("svg");
     if (svgElement) {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
       const svgData = new XMLSerializer().serializeToString(svgElement);
       const img = new Image();
       img.onload = () => {
         canvas.width = img.width;
         canvas.height = img.height;
         ctx?.drawImage(img, 0, 0);
-        const url = canvas.toDataURL('image/png');
-        const link = document.createElement('a');
+        const url = canvas.toDataURL("image/png");
+        const link = document.createElement("a");
         link.href = url;
         link.download = `event-${event.id}-qr.png`;
         link.click();
       };
-      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
+      img.src =
+        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
     }
   };
 
@@ -99,39 +101,40 @@ export function EventCard({ event, featured = false }: EventCardProps) {
       radius="xl"
       padding={0}
       style={{
-        overflow: 'hidden',
-        transition: 'transform 0.22s ease, box-shadow 0.22s ease',
-        backgroundColor: 'white',
-        border: '1px solid #f1f3f5',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
+        overflow: "hidden",
+        transition: "transform 0.22s ease, box-shadow 0.22s ease",
+        backgroundColor: "white",
+        border: "1px solid #f1f3f5",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-5px)';
+        (e.currentTarget as HTMLDivElement).style.transform =
+          "translateY(-5px)";
         (e.currentTarget as HTMLDivElement).style.boxShadow =
-          '0 16px 48px rgba(0,0,0,0.10)';
+          "0 16px 48px rgba(0,0,0,0.10)";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
-        (e.currentTarget as HTMLDivElement).style.boxShadow = '';
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "";
       }}
     >
       {/* Image */}
-      <Box style={{ position: 'relative', overflow: 'hidden' }}>
+      <Box style={{ position: "relative", overflow: "hidden" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={event.image}
           alt={event.title}
           style={{
-            width: '100%',
+            width: "100%",
             height: featured ? 220 : 180,
-            objectFit: 'cover',
-            display: 'block',
+            objectFit: "cover",
+            display: "block",
           }}
         />
         {/* Category badge */}
-        <Box style={{ position: 'absolute', top: 12, left: 12 }}>
+        <Box style={{ position: "absolute", top: 12, left: 12 }}>
           <Badge
             color={CATEGORY_COLORS[event.category]}
             size="sm"
@@ -143,15 +146,20 @@ export function EventCard({ event, featured = false }: EventCardProps) {
         </Box>
         {/* Online badge */}
         {event.isOnline && (
-          <Box style={{ position: 'absolute', top: 12, right: 12 }}>
-            <Badge color="cyan" size="sm" radius="xl" leftSection={<IconWifi size={10} />}>
+          <Box style={{ position: "absolute", top: 12, right: 12 }}>
+            <Badge
+              color="cyan"
+              size="sm"
+              radius="xl"
+              leftSection={<IconWifi size={10} />}
+            >
               Online
             </Badge>
           </Box>
         )}
         {/* Almost full warning */}
         {isAlmostFull && !event.isOnline && (
-          <Box style={{ position: 'absolute', top: 12, right: 12 }}>
+          <Box style={{ position: "absolute", top: 12, right: 12 }}>
             <Badge color="red" size="sm" radius="xl">
               Hampir Penuh!
             </Badge>
@@ -160,13 +168,21 @@ export function EventCard({ event, featured = false }: EventCardProps) {
       </Box>
 
       {/* Content */}
-      <Box p="md" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <Box p="md" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         {/* Hidden QR Code for download */}
-        <div style={{ display: 'none' }} ref={qrRef}>
-          <QRCodeSVG value={`${window.location.origin}/events/${event.id}`} size={256} />
+        <div style={{ display: "none" }} ref={qrRef}>
+          <QRCodeSVG
+            value={`${window.location.origin}/events/${event.id}`}
+            size={256}
+          />
         </div>
         <Stack gap="xs" style={{ flex: 1 }}>
-          <Text fw={700} size={featured ? 'lg' : 'md'} lineClamp={2} style={{ lineHeight: 1.35 }}>
+          <Text
+            fw={700}
+            size={featured ? "lg" : "md"}
+            lineClamp={2}
+            style={{ lineHeight: 1.35 }}
+          >
             {event.title}
           </Text>
 
@@ -193,27 +209,29 @@ export function EventCard({ event, featured = false }: EventCardProps) {
             <Group justify="space-between" mb={5}>
               <Group gap={4} c="dimmed">
                 <IconUsers size={12} />
-                <Text size="xs">{event.registeredCount}/{event.seats} terdaftar</Text>
+                <Text size="xs">
+                  {event.registeredCount}/{event.seats} terdaftar
+                </Text>
               </Group>
-              <Text size="xs" fw={600} c={isAlmostFull ? 'red' : 'blue'}>
+              <Text size="xs" fw={600} c={isAlmostFull ? "red" : "blue"}>
                 {seatPercent}%
               </Text>
             </Group>
             <Box
               style={{
                 height: 5,
-                backgroundColor: '#e9ecef',
+                backgroundColor: "#e9ecef",
                 borderRadius: 99,
-                overflow: 'hidden',
+                overflow: "hidden",
               }}
             >
               <Box
                 style={{
-                  height: '100%',
+                  height: "100%",
                   width: `${seatPercent}%`,
-                  backgroundColor: isAlmostFull ? '#fa5252' : '#228be6',
+                  backgroundColor: isAlmostFull ? "#fa5252" : "#228be6",
                   borderRadius: 99,
-                  transition: 'width 0.4s ease',
+                  transition: "width 0.4s ease",
                 }}
               />
             </Box>
@@ -224,21 +242,28 @@ export function EventCard({ event, featured = false }: EventCardProps) {
         <Group justify="space-between" align="center" mt="md">
           <Box>
             {event.price === null ? (
-              <Text fw={700} size={featured ? 'lg' : 'md'} c="green">
+              <Text fw={700} size={featured ? "lg" : "md"} c="green">
                 Gratis
               </Text>
-            ) : event.normalPrice && event.normalPrice > event.price ? (
+            ) : event.discount_price != null ? (
               <Group gap="xs" align="center">
-                <Text fw={700} size={featured ? 'lg' : 'md'} c="dark">
+                <Text fw={700} size={featured ? "lg" : "md"} c="dark">
+                  {formatPrice(event.discount_price)}
+                </Text>
+                <Text
+                  fw={600}
+                  size="sm"
+                  c="dimmed"
+                  style={{ textDecoration: "line-through" }}
+                >
                   {formatPrice(event.price)}
                 </Text>
-                <Text fw={600} size="sm" c="dimmed" style={{ textDecoration: 'line-through' }}>
-                  {formatPrice(event.normalPrice)}
-                </Text>
-                <Badge size="xs" color="red">Diskon</Badge>
+                <Badge size="xs" color="red">
+                  Diskon
+                </Badge>
               </Group>
             ) : (
-              <Text fw={700} size={featured ? 'lg' : 'md'} c="dark">
+              <Text fw={700} size={featured ? "lg" : "md"} c="dark">
                 {formatPrice(event.price)}
               </Text>
             )}
