@@ -8,6 +8,7 @@ export interface Event {
   isOnline: boolean;
   price: number | null; // null = gratis
   normalPrice?: number | null; // normal price if on discount
+  discount_price?: number | null;
   category: EventCategory;
   image: string;
   description: string;
