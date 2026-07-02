@@ -34,6 +34,9 @@ import {
 } from '@tabler/icons-react';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from '@/data/events';
 import { formatDate, formatPrice } from '@/lib/utils';
+import AddonPicker from '@/components/checkout/AddonPicker';
+import { computeAddonsTotalCents, buildPurchaseTicketsPayload } from '@/lib/pricing';
+import type { ApiEvent, Ticket, TicketTypeAddon } from '@/types/ticket';
 
 interface PaymentChannel {
   code: string;
@@ -42,41 +45,6 @@ interface PaymentChannel {
   type: string;
   fee?: { flat: number; percent: number };
   active: boolean;
-}
-
-interface Ticket {
-  id: string;
-  name: string;
-  description: string | null;
-  price_cents: number;
-  normal_price?: number;
-  quantity: number;
-  quantity_sold: number;
-  quantity_reserved: number | null;
-  sale_start: string;
-  sale_end: string;
-  min_per_order: number;
-  max_per_order: number;
-  is_active: boolean;
-}
-
-interface EventAddition {
-  id: string;
-  name: string;
-  description: string | null;
-  created_at: string;
-  updated_at: string;
-  tickets: Ticket[];
-}
-
-interface ApiEvent {
-  id: string;
-  name: string;
-  description: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  additions: EventAddition[];
 }
 
 export default function EventDetailPage() {
@@ -103,6 +71,7 @@ export default function EventDetailPage() {
     id_number: '',
   });
   const [ticketsData, setTicketsData] = useState<Array<{ bib_name: string; shirt_size: string }>>([]);
+  const [selectedAddons, setSelectedAddons] = useState<Set<string>[]>([]);
   const [promoCode, setPromoCode] = useState('');
   const [tncAccepted, setTncAccepted] = useState(false);
 
@@ -177,6 +146,7 @@ export default function EventDetailPage() {
     setSelectedTicketId(ticketId);
     setQuantity(initialQty);
     setTicketsData(Array(initialQty).fill(null).map(() => ({ bib_name: '', shirt_size: '' })));
+    setSelectedAddons(Array(initialQty).fill(null).map(() => new Set<string>()));
     setBuyerData({ first_name: '', last_name: '', email: '', phone: '', id_number: '' });
     setPromoCode('');
     setTncAccepted(false);
@@ -202,6 +172,7 @@ export default function EventDetailPage() {
       setQuantity(qty);
       // Initialize ticket data for each ticket
       setTicketsData(Array(qty).fill(null).map(() => ({ bib_name: '', shirt_size: '' })));
+      setSelectedAddons(Array(qty).fill(null).map(() => new Set<string>()));
     }
   };
 
@@ -209,6 +180,17 @@ export default function EventDetailPage() {
     const newTicketsData = [...ticketsData];
     newTicketsData[index][field] = value;
     setTicketsData(newTicketsData);
+  };
+
+  const handleAddonToggle = (index: number, addonId: string) => {
+    setSelectedAddons((prev) => {
+      const next = [...prev];
+      const set = new Set(next[index]);
+      if (set.has(addonId)) set.delete(addonId);
+      else set.add(addonId);
+      next[index] = set;
+      return next;
+    });
   };
 
   const isValidEmail = (email: string) =>
@@ -220,13 +202,20 @@ export default function EventDetailPage() {
 
   const handlePaymentChannelSelect = (code: string) => {
     setSelectedPaymentChannel(code);
-    const baseAmount = selectedTicketId && event
-      ? (event.additions.flatMap((a) => a.tickets).find((t) => t.id === selectedTicketId)?.price_cents || 0) * quantity
+    const findTicket = () =>
+      selectedTicketId && event
+        ? event.additions.flatMap((a) => a.tickets).find((t) => t.id === selectedTicketId) ?? null
+        : null;
+    const ticket = findTicket();
+    const baseCents = ticket ? ticket.price_cents * quantity : 0;
+    const addonsCents = ticket?.addons
+      ? computeAddonsTotalCents(selectedAddons, ticket.addons)
       : 0;
-    if (baseAmount > 0) {
+    const totalAmount = baseCents + addonsCents;
+    if (totalAmount > 0) {
       setFeeLoading(true);
       setTransferFee(0);
-      fetch(`/api/registrations/fee-calculator?code=${encodeURIComponent(code)}&amount=${baseAmount}`)
+      fetch(`/api/registrations/fee-calculator?code=${encodeURIComponent(code)}&amount=${totalAmount}`)
         .then((r) => r.json())
         .then((json) => {
           const fee = json?.data?.[0]?.total_fee?.customer ?? 0;
@@ -261,7 +250,7 @@ export default function EventDetailPage() {
       phone: buyerData.phone,
       id_number: buyerData.id_number,
       quantity,
-      tickets: ticketsData,
+      tickets: buildPurchaseTicketsPayload(ticketsData, selectedAddons),
       payment_method: selectedPaymentChannel,
       promo_code: promoCode || undefined,
       tnc_accepted: tncAccepted,
@@ -335,6 +324,14 @@ export default function EventDetailPage() {
   const totalSold = tickets.reduce((sum, t) => sum + t.quantity_sold, 0);
   const seatPercent = totalSeats > 0 ? Math.round((totalSold / totalSeats) * 100) : 0;
   const isAlmostFull = seatPercent >= 80;
+  const selectedAddonsTicket = selectedTicketId
+    ? tickets.find((t) => t.id === selectedTicketId) ?? null
+    : null;
+  const selectedTicketAddons: TicketTypeAddon[] =
+    selectedAddonsTicket?.addons?.filter((a) => a.is_active) ?? [];
+  const selectedTicketPriceCents = selectedAddonsTicket?.price_cents ?? 0;
+  const baseTotalCents = selectedTicketPriceCents * quantity;
+  const addonsTotalCents = computeAddonsTotalCents(selectedAddons, selectedTicketAddons);
 
   return (
     <Box py={60}>
@@ -477,6 +474,11 @@ export default function EventDetailPage() {
                               {!ticket.is_active && <Badge color="gray" size="sm" radius="xl">Nonaktif</Badge>}
                               {isSoldOut && <Badge color="red" size="sm" radius="xl">Habis Terjual</Badge>}
                               {isExpired && !isSoldOut && <Badge color="orange" size="sm" radius="xl">Penjualan Berakhir</Badge>}
+                              {ticket.addons && ticket.addons.filter(a => a.is_active).length > 0 && (
+                                <Badge color="blue" size="sm" radius="xl" variant="light">
+                                  +{ticket.addons.filter(a => a.is_active).length} tambahan
+                                </Badge>
+                              )}
                             </Group>
 
                             {ticket.description && (
@@ -768,6 +770,19 @@ export default function EventDetailPage() {
                       }
                       required
                     />
+                    {selectedTicketAddons.length > 0 && (
+                      <>
+                        <Divider />
+                        <Text size="sm" fw={500}>
+                          Tambahan <Text component="span" size="xs" c="dimmed" fw={400}>(Opsional)</Text>
+                        </Text>
+                        <AddonPicker
+                          addons={selectedTicketAddons}
+                          selectedAddonIds={selectedAddons[index] ?? new Set<string>()}
+                          onToggle={(addonId) => handleAddonToggle(index, addonId)}
+                        />
+                      </>
+                    )}
                   </Stack>
                 </Paper>
               ))}
@@ -801,12 +816,24 @@ export default function EventDetailPage() {
                     <Text c="dimmed" size="sm">Harga per Tiket:</Text>
                     <Text fw={600} size="sm">
                       {selectedTicketId
-                        ? formatPrice(
-                            tickets.find((t) => t.id === selectedTicketId)?.price_cents || 0
-                          )
+                        ? formatPrice(selectedTicketPriceCents)
                         : '-'}
                     </Text>
                   </Group>
+                  <Group justify="space-between">
+                    <Text c="dimmed" size="sm">Subtotal Tiket:</Text>
+                    <Text fw={600} size="sm">
+                      {selectedTicketId ? formatPrice(baseTotalCents) : '-'}
+                    </Text>
+                  </Group>
+                  {addonsTotalCents > 0 && (
+                    <Group justify="space-between">
+                      <Text c="dimmed" size="sm">Tambahan:</Text>
+                      <Text fw={600} size="sm" c="blue">
+                        + {formatPrice(addonsTotalCents)}
+                      </Text>
+                    </Group>
+                  )}
                   <Divider />
                   {/* Payment Channels */}
                   <Box mt={4}>
@@ -883,10 +910,7 @@ export default function EventDetailPage() {
                       <Text fw={700} c="#1971c2">Total yang Dibayar:</Text>
                       <Text fw={800} size="xl" c="#1971c2">
                         {selectedTicketId
-                          ? formatPrice(
-                              (tickets.find((t) => t.id === selectedTicketId)?.price_cents || 0) *
-                                quantity + transferFee
-                            )
+                          ? formatPrice(baseTotalCents + addonsTotalCents + transferFee)
                           : '-'}
                       </Text>
                     </Group>
