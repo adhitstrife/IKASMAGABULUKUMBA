@@ -1,4 +1,4 @@
-import type { TicketTypeAddon } from '@/types/ticket';
+import type { TicketTypeAddon } from "@/types/ticket";
 
 export function computeAddonsTotalIdr(
   selected: Set<string>[],
@@ -18,7 +18,7 @@ export function computeAddonsTotalCents(
   selected: Set<string>[],
   available: TicketTypeAddon[],
 ): number {
-  return computeAddonsTotalIdr(selected, available) * 100;
+  return computeAddonsTotalIdr(selected, available);
 }
 
 export function buildPurchaseTicketsPayload<T>(
@@ -27,6 +27,8 @@ export function buildPurchaseTicketsPayload<T>(
 ): (T & { addons: { addon_id: string }[] })[] {
   return participants.map((p, i) => ({
     ...p,
-    addons: Array.from(selected[i] ?? new Set<string>()).map((addon_id) => ({ addon_id })),
+    addons: Array.from(selected[i] ?? new Set<string>()).map((addon_id) => ({
+      addon_id,
+    })),
   }));
 }
