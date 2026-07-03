@@ -58,14 +58,13 @@ export function UpcomingHighlight() {
               date: apiEvent.created_at,
               location: "Bulukumba",
               isOnline: false,
-              price:
-                apiEvent.latest_addition?.tickets?.[0]?.price_cents || null,
-              discount_price: (() => {
+              price: (() => {
                 const prices = apiEvent.latest_addition?.tickets
                   ?.map((t: any) => t.price_cents)
                   .filter((p: any) => p != null);
                 return prices?.length ? Math.min(...prices) : null;
               })(),
+              discount_price: null,
               category: "olahraga",
               image:
                 apiEvent.image ||
