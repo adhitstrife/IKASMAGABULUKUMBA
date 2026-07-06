@@ -356,7 +356,9 @@ export default function EventDetailPage() {
 
   const allAdditions = event.additions ?? [];
   const tickets = allAdditions.length > 0 
-    ? allAdditions.flatMap((addition) => addition.tickets ?? [])
+    ? allAdditions.flatMap((addition) =>
+        (addition.tickets ?? []).filter((ticket) => ticket.is_active)
+      )
     : [];
   const totalSeats = tickets.reduce((sum, t) => sum + t.quantity, 0);
   const totalSold = tickets.reduce((sum, t) => sum + t.quantity_sold, 0);
@@ -497,7 +499,7 @@ export default function EventDetailPage() {
                         border: '1px solid #dee2e6',
                         backgroundColor: '#fff',
                         boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-                        opacity: (isSoldOut || isExpired || !ticket.is_active) ? 0.75 : 1,
+                        opacity: (isSoldOut || isExpired) ? 0.75 : 1,
                       }}
                     >
                       {/* Left accent bar */}
@@ -520,7 +522,6 @@ export default function EventDetailPage() {
                                 bonusThreshold={ticket.bonus_threshold}
                                 bonusQuantity={ticket.bonus_quantity}
                               />
-                              {!ticket.is_active && <Badge color="gray" size="sm" radius="xl">Nonaktif</Badge>}
                               {isSoldOut && <Badge color="red" size="sm" radius="xl">Habis Terjual</Badge>}
                               {isExpired && !isSoldOut && <Badge color="orange" size="sm" radius="xl">Penjualan Berakhir</Badge>}
                               {ticket.addons && ticket.addons.filter(a => a.is_active).length > 0 && (
@@ -600,7 +601,7 @@ export default function EventDetailPage() {
                               size="sm"
                               radius="xl"
                               fullWidth
-                              disabled={isSoldOut || isExpired || !ticket.is_active}
+                              disabled={isSoldOut || isExpired}
                               onClick={() => handleSelectTicket(ticket.id)}
                               variant={isSoldOut || isExpired ? 'light' : 'filled'}
                               color={isSoldOut ? 'gray' : isExpired ? 'orange' : 'blue'}
