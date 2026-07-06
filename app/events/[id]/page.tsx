@@ -41,6 +41,7 @@ import {
   buildPurchaseTicketsPayload,
   getBonusPreview,
   isCommunityBonus,
+  getEffectiveMaxPerOrder,
 } from '@/lib/pricing';
 import type { ApiEvent, Ticket, TicketTypeAddon } from '@/types/ticket';
 
@@ -148,7 +149,13 @@ export default function EventDetailPage() {
 
   const handleSelectTicket = (ticketId: string) => {
     const ticket = tickets.find((t) => t.id === ticketId);
-    const initialQty = ticket?.min_per_order ?? 1;
+    const minQty = ticket?.min_per_order ?? 1;
+    const maxQty = getEffectiveMaxPerOrder(
+      ticket?.max_per_order,
+      ticket?.quantity ?? 0,
+      ticket?.quantity_sold ?? 0,
+    );
+    const initialQty = Math.max(minQty, Math.min(minQty, maxQty));
     setSelectedTicketId(ticketId);
     setQuantity(initialQty);
     const { free: initialFree, total: initialTotal } = getBonusPreview(
@@ -185,16 +192,23 @@ export default function EventDetailPage() {
     const qty = typeof value === 'string' ? parseInt(value) : value;
     if (qty > 0 && selectedTicketId) {
       const ticket = tickets.find((t) => t.id === selectedTicketId);
-      setQuantity(qty);
+      const minQty = ticket?.min_per_order ?? 1;
+      const maxQty = getEffectiveMaxPerOrder(
+        ticket?.max_per_order,
+        ticket?.quantity ?? 0,
+        ticket?.quantity_sold ?? 0,
+      );
+      const safeQty = Math.max(minQty, Math.min(qty, maxQty));
+      setQuantity(safeQty);
       const { free, total } = getBonusPreview(
-        qty,
+        safeQty,
         ticket?.bonus_threshold,
         ticket?.bonus_quantity,
       );
       setTicketsData(Array(total).fill(null).map((_, i) => ({
         bib_name: '',
         shirt_size: '',
-        is_bonus: i >= qty,
+        is_bonus: i >= safeQty,
       })));
       setSelectedAddons(Array(total).fill(null).map(() => new Set<string>()));
     }
@@ -678,12 +692,21 @@ export default function EventDetailPage() {
               {(() => {
                 const selectedTicket = tickets.find((t) => t.id === selectedTicketId);
                 const minQty = selectedTicket?.min_per_order ?? 1;
-                const maxQty = selectedTicket?.max_per_order ?? 10;
+                const maxQty = getEffectiveMaxPerOrder(
+                  selectedTicket?.max_per_order,
+                  selectedTicket?.quantity ?? 0,
+                  selectedTicket?.quantity_sold ?? 0,
+                );
+                const isMaxUnlimited = !selectedTicket?.max_per_order || selectedTicket.max_per_order <= 0;
                 return (
                   <>
                     <NumberInput
                       label="Jumlah Tiket"
-                      description={`Minimum ${minQty} tiket, maksimum ${maxQty} tiket per pesanan`}
+                      description={
+                        isMaxUnlimited
+                          ? `Minimum ${minQty} tiket per pesanan`
+                          : `Minimum ${minQty} tiket, maksimum ${maxQty} tiket per pesanan`
+                      }
                       min={minQty}
                       max={maxQty}
                       value={quantity}

@@ -60,6 +60,18 @@ export function formatBonusSummary(
   return `Beli ${bonusThreshold} gratis ${bonusQuantity}`;
 }
 
+export function getEffectiveMaxPerOrder(
+  maxPerOrder: number | null | undefined,
+  totalQuantity: number,
+  quantitySold: number,
+): number {
+  const stock = Math.max(0, totalQuantity - quantitySold);
+  if (maxPerOrder != null && maxPerOrder > 0) {
+    return Math.min(maxPerOrder, stock);
+  }
+  return stock;
+}
+
 export const VARIANT_CONFIG: Record<TicketTypeVariant, {
   label: string;
   color: string;

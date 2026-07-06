@@ -27,7 +27,7 @@ export interface Ticket {
   sale_start: string;
   sale_end: string;
   min_per_order: number;
-  max_per_order: number;
+  max_per_order: number | null;
   is_active: boolean;
   variant?: TicketTypeVariant;
   bonus_threshold: number | null;
