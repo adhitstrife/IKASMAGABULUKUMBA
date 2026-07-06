@@ -1,3 +1,5 @@
+export type TicketTypeVariant = 'standard' | 'student' | 'community';
+
 export interface TicketTypeAddon {
   id: string;
   ticket_type_id: string;
@@ -27,6 +29,9 @@ export interface Ticket {
   min_per_order: number;
   max_per_order: number;
   is_active: boolean;
+  variant?: TicketTypeVariant;
+  bonus_threshold: number | null;
+  bonus_quantity: number | null;
   addons?: TicketTypeAddon[];
 }
 
@@ -56,5 +61,6 @@ export interface SelectedAddonInput {
 export interface ParticipantFormData {
   bib_name: string;
   shirt_size: string;
+  is_bonus: boolean;
   addons: SelectedAddonInput[];
 }

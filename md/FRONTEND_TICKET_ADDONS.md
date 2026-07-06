@@ -295,7 +295,7 @@ POST /api/v1/registrations/purchase
 | Long Sleeve (Citra) | 1 | Rp 10.000 | Rp 10.000 |
 | **Total (cents)** | | | **32.000.000** |
 
-> Addon prices are stored in **IDR** (not cents). Conversion to cents (`price * 100`) happens when combined with total.
+> Addon prices are stored in **IDR**. Internally, `total_amount_cents` is functionally treated as IDR — so addon price is added directly without conversion.
 
 ---
 
@@ -382,15 +382,11 @@ function calculatePricePreview(
   quantity: number,
   addonsPerTicket: { addonId: string; priceIdr: number }[][],
   promoCode?: string | null,
-): { subtotalIdr: number; addonsTotalIdr: number; totalCents: number } {
-  const baseTotalIdr = ticketPriceCents * quantity / 100;
-  const addonsTotalIdr = addonsPerTicket.flat().reduce((sum, a) => sum + a.priceIdr, 0);
-  const totalCents = (baseTotalIdr * 100) + (addonsTotalIdr * 100);
-  return {
-    subtotalIdr: baseTotalIdr,
-    addonsTotalIdr,
-    totalCents,
-  };
+): { subtotal: number; addonsTotal: number; grandTotal: number } {
+  const subtotal = ticketPriceCents * quantity; // "cents" = functionally IDR
+  const addonsTotal = addonsPerTicket.flat().reduce((sum, a) => sum + a.priceIdr, 0);
+  const grandTotal = subtotal + addonsTotal;
+  return { subtotal, addonsTotal, grandTotal };
 }
 ```
 
@@ -436,8 +432,465 @@ model TicketAddon {
 
 ## Common Pitfalls
 
-1. **Cents vs IDR**: Ticket prices are in **cents** (`price_cents`). Addon prices are in **plain IDR** (`price`). Always multiply addon price by 100 when combining with cents-based totals.
+1. **Cents vs IDR**: Although the schema uses `_cents` naming (e.g. `total_amount_cents`), these values are functionally stored as **IDR** (sent to Tripay as rupiah). Addon `price` is also in **IDR** — no conversion needed when adding to totals.
 2. **Per-ticket limit**: Each ticket can only have 1 unit per addon. If the UI allows adding a second long sleeve for the same participant, the API will reject it.
 3. **Stock race**: Multiple users buying simultaneously could overshoot `max_quantity`. Handle "out of stock" errors gracefully on the UI (show a message).
 4. **Delete is blocked**: If EO tries to delete an addon that already has ticket selections, the API returns 400. Tell EO to use `is_active: false` instead.
 5. **Price changes are not retroactive**: `price_per_unit` is snapshotted at purchase time. Changing `price` on the addon definition doesn't affect existing purchases.
+
+---
+
+## Ticket Type Variants
+
+Each `TicketType` now has a `variant` field that controls behavior:
+
+| Variant | Enum Value | Behavior |
+|---------|-----------|----------|
+| Standard (default) | `standard` | Regular ticket — no special logic |
+| Student | `student` | Same as standard, but frontend shows "Student ID Number" label instead of "ID Number" |
+| Community | `community` | Bulk-bonus logic: for every N paid tickets, Y free tickets are added |
+
+### Creating / Updating a Ticket Type with Variant
+
+```json
+POST /api/v1/ticket-types
+{
+  "name": "Mahasiswa 10K",
+  "price_cents": 5000000,
+  "quantity": 100,
+  "variant": "student"
+}
+```
+
+For community variant, bonus fields are required:
+
+```json
+POST /api/v1/ticket-types
+{
+  "name": "Group Run 10K",
+  "price_cents": 5000000,
+  "quantity": 100,
+  "variant": "community",
+  "bonus_threshold": 10,
+  "bonus_quantity": 1
+}
+```
+
+Bonus calculation: `free tickets = floor(paidQuantity / bonus_threshold) * bonus_quantity`
+
+Example with threshold=10, bonus=1:
+- User buys `quantity=10` → 10 paid + 1 free = **11 tickets total**
+- User buys `quantity=5` → 5 paid + 0 free = **5 tickets total**
+- User buys `quantity=20` → 20 paid + 2 free = **22 tickets total**
+
+---
+
+### Student Variant — Frontend Behavior
+
+No backend change to DB columns. The `id_number` field on `Registration` stays the same name. The frontend should:
+
+1. Read `ticket_type.variant` from the ticket type data
+2. If `variant === 'student'`, render the input label as **"Student ID Number"** instead of "ID Number"
+3. If `variant !== 'student'`, render as normal ("ID Number")
+
+No changes needed to the API payload — the DTO field remains `id_number`.
+
+---
+
+### Community Variant — Purchase Flow
+
+When buying a community ticket, the `quantity` in the request body represents **paid tickets only**. Free (bonus) tickets are added automatically.
+
+**Important:** The `tickets` array must include entries for **all** tickets (paid + free). Each entry needs `bib_name`, `shirt_size`, and optional `addons`.
+
+Example: `ticket_type.variant = 'community'`, `bonus_threshold = 10`, `bonus_quantity = 1`
+
+```json
+{
+  "ticket_type_id": "uuid-community-tt",
+  "quantity": 10,
+  "tickets": [
+    { "bib_name": "A", "shirt_size": "M" },
+    { "bib_name": "B", "shirt_size": "L" },
+    { "bib_name": "C", "shirt_size": "S" },
+    { "bib_name": "D", "shirt_size": "M" },
+    { "bib_name": "E", "shirt_size": "L" },
+    { "bib_name": "F", "shirt_size": "S" },
+    { "bib_name": "G", "shirt_size": "M" },
+    { "bib_name": "H", "shirt_size": "L" },
+    { "bib_name": "I", "shirt_size": "S" },
+    { "bib_name": "J", "shirt_size": "M" },
+    { "bib_name": "K (free)", "shirt_size": "XL" }
+  ],
+  ...
+}
+```
+
+- `quantity = 10` (paid)
+- System adds 1 free ticket → total `tickets.length` must be **11**
+- `total_price = 10 × price_cents`
+- The free ticket has `is_bonus: true` in the response
+- The registration `quantity` in the response will show `11` (total)
+- `bonus_quantity: 1` will be on the registration object
+
+**Response snippet:**
+```json
+{
+  "registration": {
+    "quantity": 11,
+    "bonus_quantity": 1,
+    "total_amount_cents": 50000000
+  },
+  "tickets": [
+    { "id": "...", "is_bonus": false, ... },
+    ...
+    { "id": "...", "is_bonus": true, ... }
+  ]
+}
+```
+
+**Validation errors (400):**
+- If `tickets.length` does not match `quantity + bonusQuantity` → error with expected count
+- If community variant has invalid `bonus_threshold`/`bonus_quantity` config
+
+---
+
+### Frontend Price Preview for Community Tickets
+
+```ts
+function calculateCommunityPricePreview(
+  ticketPriceCents: number,
+  paidQuantity: number,
+  bonusThreshold: number,
+  bonusQuantity: number,
+) {
+  const free = Math.floor(paidQuantity / bonusThreshold) * bonusQuantity;
+  const total = paidQuantity + free;
+  const subtotal = ticketPriceCents * paidQuantity;
+  return { paid: paidQuantity, free, total, subtotal };
+}
+```
+
+---
+
+## Frontend Implementation Guide: Ticket Type Variants
+
+### 1. EO Dashboard — Create Ticket Type Form
+
+**State shape:**
+```ts
+interface CreateTicketTypeForm {
+  name: string;
+  description?: string;
+  price_cents: number;
+  quantity: number;
+  min_per_order: number;   // default 1
+  max_per_order?: number;
+  variant: 'standard' | 'student' | 'community';
+  bonus_threshold?: number;
+  bonus_quantity?: number;
+  sale_start?: string;     // ISO date
+  sale_end?: string;
+}
+```
+
+**Logic:**
+- Render a variant selector (radio / segmented control): Standard | Student | Community
+- When `variant !== 'community'`: hide `bonus_threshold` and `bonus_quantity` fields entirely — do not send them
+- When `variant === 'community'`: show `bonus_threshold` (input number, min=2) and `bonus_quantity` (input number, min=1)
+- Client-side validation before POST:
+  - `bonus_quantity` must be < `bonus_threshold`
+  - Both must be > 0
+- On submit — POST `/api/v1/ticket-types` with all fields (or PATCH `/api/v1/ticket-types/:id`)
+
+**Edge cases:**
+- User switches from community back to standard → clear bonus fields
+- Price and quantity fields remain the same regardless of variant
+
+---
+
+### 2. EO Dashboard — Edit Ticket Type Form
+
+**State shape:** same as create, pre-filled from existing ticket type via GET `/api/v1/ticket-types/:id`.
+
+**Variant transitions:**
+| From → To | Behavior |
+|-----------|---------|
+| standard → student | Safe. Just adds variant flag. |
+| standard → community | Must now fill bonus_threshold + bonus_quantity. |
+| student → standard | Safe. Just removes variant flag. |
+| student → community | Must now fill bonus_threshold + bonus_quantity. |
+| community → standard | bonus_threshold + bonus_quantity cleared on backend. |
+| community → student | Same as above. |
+
+**Important warning:** When changing variant to/from community (especially changing bonus fields), show a toast/modal:
+> "Perubahan bonus hanya berlaku untuk pembelian baru. Registration yang sudah ada tidak akan di-recalculate."
+
+**Logic:**
+- Load existing ticket type. Prefill all fields.
+- If existing `bonus_threshold`/`bonus_quantity` has values (variant is community), show them in the form.
+- If user removes variant from community and has existing registrations, warn: "Ticket type already has registrations. Bonus fields can still be removed, but existing registrations are not recalculated."
+
+---
+
+### 3. Public Event Listing — Variant Badge
+
+When rendering ticket types on the event landing page, display a badge/indicator per variant:
+
+```ts
+const variantConfig: Record<string, { label: string; icon: string; color: string }> = {
+  standard:  { label: '',              icon: '',               color: '' },
+  student:   { label: 'Mahasiswa',     icon: '🎓',             color: 'blue' },
+  community: { label: 'Grup / Borongan', icon: '👥',           color: 'green' },
+};
+```
+
+**Logic:**
+- `variant === 'standard'`: render nothing extra beside the ticket name
+- `variant === 'student'`: show a badge "Mahasiswa" with an academic-themed color
+- `variant === 'community'`: compute a short summary text, e.g. `"Beli ${bonus_threshold} gratis ${bonus_quantity}"` and render as a badge
+
+**Example render output:**
+```
+┌─────────────────────────────┐
+│ Tiket Reguler 10K           │
+│ Rp 100.000                  │
+└─────────────────────────────┘
+
+┌─────────────────────────────┐
+│ Tiket Mahasiswa 10K  [🎓 Mahasiswa]  │
+│ Rp 75.000                  │
+└─────────────────────────────┘
+
+┌─────────────────────────────┐
+│ Tiket Grup 10K       [👥 Beli 10 gratis 1]  │
+│ Rp 100.000                 │
+└─────────────────────────────┘
+```
+
+---
+
+### 4. Public Checkout — Community Quantity Selector
+
+**Special behavior for community variant only:**
+
+When user selects a community ticket type and picks a quantity, calculate and display the bonus inline:
+
+```ts
+function getBonusPreview(
+  paidQuantity: number,
+  bonusThreshold: number,
+  bonusQuantity: number,
+): { free: number; total: number } {
+  const free = Math.floor(paidQuantity / bonusThreshold) * bonusQuantity;
+  return { free, total: paidQuantity + free };
+}
+```
+
+**UI flow:**
+1. User picks community ticket → quantity input renders normally
+2. As user types/changes `quantity` (representing **paid tickets**), compute `free = floor(qty / threshold) * bonus`
+3. If `free > 0`, render a live preview below the input:
+   > "Kamu akan mendapatkan **{free} tiket gratis**. Total tiket yang akan dibuat: **{total}**."
+4. The free count updates in real-time as quantity changes
+5. The "Total Pembayaran" preview should show: `(quantity × price_cents)` — only paid tickets counted
+
+**Example: threshold=10, bonus=1, price=100000**
+
+| User enters (paid) | Preview shows | Total charged |
+|---|---|---|
+| 5 | "5 tiket, 0 gratis, total 5" | Rp 500.000 |
+| 10 | "10 tiket, 1 gratis, total 11" | Rp 1.000.000 |
+| 15 | "15 tiket, 1 gratis, total 16" | Rp 1.500.000 |
+| 20 | "20 tiket, 2 gratis, total 22" | Rp 2.000.000 |
+
+---
+
+### 5. Public Checkout — Dynamic Tickets Form
+
+After quantity is set, render the participant input form. For community tickets, the number of rows is different from `quantity`:
+
+**Logic:**
+```ts
+const free = Math.floor(quantity / ticketType.bonus_threshold) * ticketType.bonus_quantity;
+const totalRows = quantity + free;
+
+// Render totalRows worth of participant input forms
+// Rows 0..quantity-1 are "paid" rows
+// Rows quantity..totalRows-1 are "free" rows
+```
+
+**Rendering rules:**
+- All rows require: `bib_name` (string, required), `shirt_size` (string, required), `addons` (optional array)
+- Rows with `index >= quantity` (free tickets) should be visually distinct:
+  - Show a small badge "Free" or "Bonus" near the row number
+  - Subtle background color change (e.g., `bg-gray-50` or similar)
+  - The badge or label: "Tiket Gratis #{index - quantity + 1}"
+- All rows, including free ones, can still have addons (the user pays for addons on any ticket)
+
+**Example rendering (quantity=5, free=1, total=6):**
+
+```
+Peserta 1 [Bayar]       → bib_name: [____] shirt_size: [▼]  addons: [☐ Long Sleeve]
+Peserta 2 [Bayar]       → bib_name: [____] shirt_size: [▼]  addons: [☐ Long Sleeve]
+Peserta 3 [Bayar]       → bib_name: [____] shirt_size: [▼]  addons: [☐ Long Sleeve]
+Peserta 4 [Bayar]       → bib_name: [____] shirt_size: [▼]  addons: [☐ Long Sleeve]
+Peserta 5 [Bayar]       → bib_name: [____] shirt_size: [▼]  addons: [☐ Long Sleeve]
+Peserta 6 [🎁 Gratis]   → bib_name: [____] shirt_size: [▼]  addons: [☐ Long Sleeve]
+```
+
+**Client-side validation:**
+- `tickets.length` must equal `quantity + free` (total rows)
+- If user removes a row, add it back — server will reject with a clear message if count is wrong
+
+---
+
+### 6. Public Checkout — Price Breakdown Component
+
+For community tickets, render the price breakdown carefully to avoid confusion:
+
+```
+[Harga Tiket Grup 10K]
+  5 × Rp 100.000           Rp 500.000
+  + 1 tiket gratis         Rp 0
+
+  Subtotal tiket           Rp 500.000
+  (+ addons jika ada)      Rp XX.XXX
+  ─────────────────────────────────
+  Total Pembayaran         Rp 500.000   ← equals what's charged
+```
+
+**Rules:**
+- Never display `quantity + free × price` as that would misleadingly show a higher total
+- The free tickets are clearly shown as free (Rp 0)
+- The final total matches `total_amount_cents` from the response (which is `paidQuantity × price_cents` minus discount + addons)
+
+---
+
+### 7. Order Summary / Email — Free Ticket Badge
+
+When rendering the order summary (thank-you page, "My Tickets" page, or confirmation email):
+
+```ts
+tickets.forEach((ticket) => {
+  if (ticket.is_bonus) {
+    renderBadge('🎁 Gratis', { color: 'green', subtle: true });
+  }
+});
+```
+
+- Tickets with `is_bonus: true` should display a small "Free" or "Bonus" badge
+- The badge should be less prominent than paid tickets (gray text, subtle background)
+- In the ticket list, free tickets are listed alongside paid tickets — they are real tickets with QR codes, bib names, etc.
+
+**Data source:**
+- `GET /api/v1/registrations/:id` response includes `tickets[].is_bonus`
+- `Registration.bonus_quantity` tells you how many tickets are free
+
+---
+
+### 8. TypeScript Types (for Frontend Project)
+
+```ts
+enum TicketTypeVariant {
+  standard = 'standard',
+  student = 'student',
+  community = 'community',
+}
+
+interface TicketType {
+  id: string;
+  addition_id: string;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  normal_price: number | null;
+  quantity: number;
+  quantity_sold: number;
+  quantity_reserved: number | null;
+  min_per_order: number;
+  max_per_order: number | null;
+  is_active: boolean;
+  variant: TicketTypeVariant;
+  bonus_threshold: number | null;   // only for community
+  bonus_quantity: number | null;    // only for community
+  sale_start: string | null;
+  sale_end: string | null;
+  sort_order: number;
+  addons: TicketTypeAddon[];
+}
+
+interface Ticket {
+  id: string;
+  registration_id: string;
+  participant_first_name: string | null;
+  participant_last_name: string | null;
+  participant_email: string | null;
+  t_shirt_size: string | null;
+  is_bonus: boolean;                // true if free community-bonus ticket
+  qr_code_url: string | null;
+  status: string;
+}
+
+interface Registration {
+  id: string;
+  event_id: string;
+  ticket_type_id: string;
+  quantity: number;                  // total tickets (paid + free)
+  price_per_ticket_cents: number;    // raw price, not effective
+  total_amount_cents: number;        // what was paid (paid × price)
+  bonus_quantity: number | null;     // null for non-community
+  status: string;
+  tickets: Ticket[];
+}
+```
+
+---
+
+### 9. Response Field Reference — New Variant Fields
+
+**TicketType response** (GET /ticket-types, GET /events/:id/tickets, etc.):
+
+| Field | Type | Description | Always present |
+|-------|------|-------------|:---:|
+| `variant` | `"standard"\|"student"\|"community"` | Identifies ticket type category | ✅ |
+| `bonus_threshold` | `int \| null` | N — every N paid tickets triggers bonus (community only) | ❌ only when community |
+| `bonus_quantity` | `int \| null` | Y — number of free tickets awarded per threshold (community only) | ❌ only when community |
+
+**Registration response** (POST /registrations/purchase, GET /registrations/:id):
+
+| Field | Type | Description | Always present |
+|-------|------|-------------|:---:|
+| `quantity` | `int` | Total tickets issued (paid + free) | ✅ |
+| `bonus_quantity` | `int \| null` | How many were free bonus tickets (null for non-community) | ❌ only when community |
+| `total_amount_cents` | `int` | Amount charged (paid × price, minus discount, plus addons) | ✅ |
+
+**Ticket response** (nested inside Registration):
+
+| Field | Type | Description | Always present |
+|-------|------|-------------|:---:|
+| `is_bonus` | `boolean` | True if this ticket was a free community bonus | ✅ always, default false |
+
+---
+
+### 10. QA Checklist
+
+Test each scenario against the frontend implementation:
+
+| # | Scenario | Steps | Expected |
+|---|----------|-------|----------|
+| 1 | Standard ticket purchase | Create standard ticket type, buy via checkout | Normal flow, no bonus, no label change |
+| 2 | Student label swap | Create student ticket type, open checkout form | Input label reads "Student ID Number" instead of "ID Number" |
+| 3 | Community: exact threshold | Qty=10, threshold=10, bonus=1 | 1 free, 11 tickets total, charged for 10 |
+| 4 | Community: below threshold | Qty=5, threshold=10, bonus=1 | 0 free, 5 tickets total, charged for 5 |
+| 5 | Community: multiple bonuses | Qty=20, threshold=10, bonus=1 | 2 free, 22 tickets total, charged for 20 |
+| 6 | Community: tickets.length mismatch | Submit tickets array with wrong length | Server 400 "expected N tickets, got M" |
+| 7 | Community: out of stock | Buy more than available (including free) after stock limit | Server 400 "only X tickets available" |
+| 8 | Student variant: student label only | User buys student ticket, view order summary | Label was correct during input; response data unchanged |
+| 9 | Edit: variant transition | EO changes community → standard, or bonus fields | Warning shown; existing registrations preserved |
+| 10 | Edit: add bonus to existing standard | EO changes standard → community, sets bonus fields | Warning shown; future purchases only |
+| 11 | Bulk import: community variant | Import XLSX with community ticket type | No bonus applied. Import treats it as regular ticket type |
+| 12 | Listing: variant badges | Open event landing page with multiple variants | Each ticket type shows correct badge (student, community, or none) |
+| 13 | Listing: community bonus text | View community ticket type on landing page | Text shows "Beli {threshold} gratis {bonus}" |
+| 14 | Price preview: community live update | Change qty in checkout for community ticket | Free count and total update instantly without page reload |
+| 15 | Free ticket: addon selection | Select addon for a free (community bonus) ticket | Addon is charged; ticket is still free (no ticket price) |

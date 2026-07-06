@@ -35,7 +35,13 @@ import {
 import { CATEGORY_COLORS, CATEGORY_LABELS } from '@/data/events';
 import { formatDate, formatPrice } from '@/lib/utils';
 import AddonPicker from '@/components/checkout/AddonPicker';
-import { computeAddonsTotalCents, buildPurchaseTicketsPayload } from '@/lib/pricing';
+import VariantBadge from '@/components/checkout/VariantBadge';
+import {
+  computeAddonsTotalCents,
+  buildPurchaseTicketsPayload,
+  getBonusPreview,
+  isCommunityBonus,
+} from '@/lib/pricing';
 import type { ApiEvent, Ticket, TicketTypeAddon } from '@/types/ticket';
 
 interface PaymentChannel {
@@ -70,7 +76,7 @@ export default function EventDetailPage() {
     phone: '',
     id_number: '',
   });
-  const [ticketsData, setTicketsData] = useState<Array<{ bib_name: string; shirt_size: string }>>([]);
+  const [ticketsData, setTicketsData] = useState<Array<{ bib_name: string; shirt_size: string; is_bonus: boolean }>>([]);
   const [selectedAddons, setSelectedAddons] = useState<Set<string>[]>([]);
   const [promoCode, setPromoCode] = useState('');
   const [tncAccepted, setTncAccepted] = useState(false);
@@ -145,8 +151,17 @@ export default function EventDetailPage() {
     const initialQty = ticket?.min_per_order ?? 1;
     setSelectedTicketId(ticketId);
     setQuantity(initialQty);
-    setTicketsData(Array(initialQty).fill(null).map(() => ({ bib_name: '', shirt_size: '' })));
-    setSelectedAddons(Array(initialQty).fill(null).map(() => new Set<string>()));
+    const { free: initialFree, total: initialTotal } = getBonusPreview(
+      initialQty,
+      ticket?.bonus_threshold,
+      ticket?.bonus_quantity,
+    );
+    setTicketsData(Array(initialTotal).fill(null).map((_, i) => ({
+      bib_name: '',
+      shirt_size: '',
+      is_bonus: i >= initialQty,
+    })));
+    setSelectedAddons(Array(initialTotal).fill(null).map(() => new Set<string>()));
     setBuyerData({ first_name: '', last_name: '', email: '', phone: '', id_number: '' });
     setPromoCode('');
     setTncAccepted(false);
@@ -168,11 +183,20 @@ export default function EventDetailPage() {
 
   const handleQuantityChange = (value: number | string) => {
     const qty = typeof value === 'string' ? parseInt(value) : value;
-    if (qty > 0) {
+    if (qty > 0 && selectedTicketId) {
+      const ticket = tickets.find((t) => t.id === selectedTicketId);
       setQuantity(qty);
-      // Initialize ticket data for each ticket
-      setTicketsData(Array(qty).fill(null).map(() => ({ bib_name: '', shirt_size: '' })));
-      setSelectedAddons(Array(qty).fill(null).map(() => new Set<string>()));
+      const { free, total } = getBonusPreview(
+        qty,
+        ticket?.bonus_threshold,
+        ticket?.bonus_quantity,
+      );
+      setTicketsData(Array(total).fill(null).map((_, i) => ({
+        bib_name: '',
+        shirt_size: '',
+        is_bonus: i >= qty,
+      })));
+      setSelectedAddons(Array(total).fill(null).map(() => new Set<string>()));
     }
   };
 
@@ -332,6 +356,12 @@ export default function EventDetailPage() {
   const selectedTicketPriceCents = selectedAddonsTicket?.price_cents ?? 0;
   const baseTotalCents = selectedTicketPriceCents * quantity;
   const addonsTotalCents = computeAddonsTotalCents(selectedAddons, selectedTicketAddons);
+  const isCommunity = isCommunityBonus(selectedAddonsTicket?.variant);
+  const { free: freeTickets, total: totalTickets } = getBonusPreview(
+    quantity,
+    selectedAddonsTicket?.bonus_threshold,
+    selectedAddonsTicket?.bonus_quantity,
+  );
 
   return (
     <Box py={60}>
@@ -471,6 +501,11 @@ export default function EventDetailPage() {
                             <Group gap="xs" align="center" wrap="wrap">
                               <IconTicket size={20} color={isSoldOut ? '#adb5bd' : '#228be6'} />
                               <Text fw={800} size="xl" style={{ lineHeight: 1.2 }}>{ticket.name}</Text>
+                              <VariantBadge
+                                variant={ticket.variant}
+                                bonusThreshold={ticket.bonus_threshold}
+                                bonusQuantity={ticket.bonus_quantity}
+                              />
                               {!ticket.is_active && <Badge color="gray" size="sm" radius="xl">Nonaktif</Badge>}
                               {isSoldOut && <Badge color="red" size="sm" radius="xl">Habis Terjual</Badge>}
                               {isExpired && !isSoldOut && <Badge color="orange" size="sm" radius="xl">Penjualan Berakhir</Badge>}
@@ -660,6 +695,40 @@ export default function EventDetailPage() {
                         ? formatPrice(selectedTicket?.price_cents || 0)
                         : '-'}
                     </Text>
+                    {(() => {
+                      const { free: stepFree, total: stepTotal } = getBonusPreview(
+                        quantity,
+                        selectedTicket?.bonus_threshold,
+                        selectedTicket?.bonus_quantity,
+                      );
+                      const isCommunityStep = isCommunityBonus(selectedTicket?.variant);
+                      if (!isCommunityStep) return null;
+                      const bonusText = selectedTicket?.bonus_threshold && selectedTicket?.bonus_quantity
+                        ? `Beli ${selectedTicket.bonus_threshold} tiket mendapat ${selectedTicket.bonus_quantity} gratis`
+                        : '';
+                      return (
+                        <Paper
+                          p="sm"
+                          radius="md"
+                          style={{
+                            backgroundColor: '#f0fdf4',
+                            border: '1px solid #86efac',
+                          }}
+                        >
+                          {stepFree > 0 ? (
+                            <Text size="sm" c="green" fw={500}>
+                              Kamu akan mendapatkan{' '}
+                              <b>{stepFree} tiket gratis</b>. Total tiket:{' '}
+                              <b>{stepTotal}</b>.
+                            </Text>
+                          ) : (
+                            <Text size="sm" c="dimmed">
+                              {bonusText}. Saat ini: {quantity} tiket.
+                            </Text>
+                          )}
+                        </Paper>
+                      );
+                    })()}
                     <Button
                       onClick={() => setActiveStep(1)}
                       disabled={quantity < minQty || quantity > maxQty}
@@ -708,8 +777,9 @@ export default function EventDetailPage() {
                 required
               />
               <TextInput
-                label="Nomor Identitas"
-                placeholder="1234567890123456"
+                label={selectedAddonsTicket?.variant === 'student' ? 'Nomor ID Siswa' : 'Nomor Identitas'}
+                description={selectedAddonsTicket?.variant === 'student' ? 'Nomor Induk Siswa/Mahasiswa (NIS/NIM)' : undefined}
+                placeholder={selectedAddonsTicket?.variant === 'student' ? 'Contoh: 1234567890' : '1234567890123456'}
                 value={buyerData.id_number}
                 onChange={(e) => handleBuyerDataChange('id_number', e.currentTarget.value)}
                 required
@@ -738,54 +808,70 @@ export default function EventDetailPage() {
           {/* Step 3: Ticket Details */}
           <Stepper.Step label="Detail Tiket" description="Isi setiap tiket">
             <Stack gap="md">
-              {ticketsData.map((ticketItem, index) => (
-                <Paper key={index} withBorder p="md" radius="md">
-                  <Title order={5} mb="md">
-                    Tiket {index + 1}
-                  </Title>
-                  <Stack gap="sm">
-                    <TextInput
-                      label="Nama Peserta (Bib Name)"
-                      placeholder="Nama untuk dada nomor"
-                      value={ticketItem.bib_name}
-                      onChange={(e) =>
-                        handleTicketDataChange(index, 'bib_name', e.currentTarget.value)
-                      }
-                      required
-                    />
-                    <Select
-                      label="Ukuran Baju"
-                      placeholder="Pilih ukuran"
-                      data={[
-                        { value: 'XS', label: 'XS' },
-                        { value: 'S', label: 'S' },
-                        { value: 'M', label: 'M' },
-                        { value: 'L', label: 'L' },
-                        { value: 'XL', label: 'XL' },
-                        { value: 'XXL', label: 'XXL' },
-                      ]}
-                      value={ticketItem.shirt_size}
-                      onChange={(val) =>
-                        handleTicketDataChange(index, 'shirt_size', val || '')
-                      }
-                      required
-                    />
-                    {selectedTicketAddons.length > 0 && (
-                      <>
-                        <Divider />
-                        <Text size="sm" fw={500}>
-                          Tambahan <Text component="span" size="xs" c="dimmed" fw={400}>(Opsional)</Text>
-                        </Text>
-                        <AddonPicker
-                          addons={selectedTicketAddons}
-                          selectedAddonIds={selectedAddons[index] ?? new Set<string>()}
-                          onToggle={(addonId) => handleAddonToggle(index, addonId)}
-                        />
-                      </>
-                    )}
-                  </Stack>
-                </Paper>
-              ))}
+              {ticketsData.map((ticketItem, index) => {
+                const isBonusRow = ticketItem.is_bonus;
+                return (
+                  <Paper
+                    key={index}
+                    withBorder
+                    p="md"
+                    radius="md"
+                    style={isBonusRow ? { backgroundColor: '#f0fdf4', borderColor: '#86efac' } : undefined}
+                  >
+                    <Group justify="space-between" mb="md">
+                      <Title order={5}>
+                        {isBonusRow ? `Tiket Gratis #${index - quantity + 1}` : `Tiket ${index + 1}`}
+                      </Title>
+                      {isBonusRow && (
+                        <Badge color="green" size="sm" radius="xl" variant="light">
+                          🎁 Bonus
+                        </Badge>
+                      )}
+                    </Group>
+                    <Stack gap="sm">
+                      <TextInput
+                        label="Nama Peserta (Bib Name)"
+                        placeholder="Nama untuk dada nomor"
+                        value={ticketItem.bib_name}
+                        onChange={(e) =>
+                          handleTicketDataChange(index, 'bib_name', e.currentTarget.value)
+                        }
+                        required
+                      />
+                      <Select
+                        label="Ukuran Baju"
+                        placeholder="Pilih ukuran"
+                        data={[
+                          { value: 'XS', label: 'XS' },
+                          { value: 'S', label: 'S' },
+                          { value: 'M', label: 'M' },
+                          { value: 'L', label: 'L' },
+                          { value: 'XL', label: 'XL' },
+                          { value: 'XXL', label: 'XXL' },
+                        ]}
+                        value={ticketItem.shirt_size}
+                        onChange={(val) =>
+                          handleTicketDataChange(index, 'shirt_size', val || '')
+                        }
+                        required
+                      />
+                      {selectedTicketAddons.length > 0 && (
+                        <>
+                          <Divider />
+                          <Text size="sm" fw={500}>
+                            Tambahan <Text component="span" size="xs" c="dimmed" fw={400}>(Opsional)</Text>
+                          </Text>
+                          <AddonPicker
+                            addons={selectedTicketAddons}
+                            selectedAddonIds={selectedAddons[index] ?? new Set<string>()}
+                            onToggle={(addonId) => handleAddonToggle(index, addonId)}
+                          />
+                        </>
+                      )}
+                    </Stack>
+                  </Paper>
+                );
+              })}
               <Group justify="space-between">
                 <Button variant="subtle" onClick={() => setActiveStep(1)}>
                   Kembali
@@ -808,24 +894,55 @@ export default function EventDetailPage() {
                   Ringkasan Pesanan
                 </Title>
                 <Stack gap="xs">
-                  <Group justify="space-between">
-                    <Text c="dimmed" size="sm">Jumlah Tiket:</Text>
-                    <Text fw={600} size="sm">{quantity}</Text>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text c="dimmed" size="sm">Harga per Tiket:</Text>
-                    <Text fw={600} size="sm">
-                      {selectedTicketId
-                        ? formatPrice(selectedTicketPriceCents)
-                        : '-'}
-                    </Text>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text c="dimmed" size="sm">Subtotal Tiket:</Text>
-                    <Text fw={600} size="sm">
-                      {selectedTicketId ? formatPrice(baseTotalCents) : '-'}
-                    </Text>
-                  </Group>
+                  {isCommunity ? (
+                    <>
+                      <Group justify="space-between">
+                        <Text c="dimmed" size="sm">Tiket Berbayar:</Text>
+                        <Text fw={600} size="sm">{quantity}</Text>
+                      </Group>
+                      {freeTickets > 0 && (
+                        <Group justify="space-between">
+                          <Text c="dimmed" size="sm">Tiket Bonus (Gratis):</Text>
+                          <Text fw={600} size="sm" c="green">+{freeTickets} (Rp 0)</Text>
+                        </Group>
+                      )}
+                      <Group justify="space-between">
+                        <Text c="dimmed" size="sm">Harga per Tiket:</Text>
+                        <Text fw={600} size="sm">
+                          {selectedTicketId
+                            ? formatPrice(selectedTicketPriceCents)
+                            : '-'}
+                        </Text>
+                      </Group>
+                      <Group justify="space-between">
+                        <Text c="dimmed" size="sm">Subtotal Tiket:</Text>
+                        <Text fw={600} size="sm">
+                          {selectedTicketId ? formatPrice(baseTotalCents) : '-'}
+                        </Text>
+                      </Group>
+                    </>
+                  ) : (
+                    <>
+                      <Group justify="space-between">
+                        <Text c="dimmed" size="sm">Jumlah Tiket:</Text>
+                        <Text fw={600} size="sm">{quantity}</Text>
+                      </Group>
+                      <Group justify="space-between">
+                        <Text c="dimmed" size="sm">Harga per Tiket:</Text>
+                        <Text fw={600} size="sm">
+                          {selectedTicketId
+                            ? formatPrice(selectedTicketPriceCents)
+                            : '-'}
+                        </Text>
+                      </Group>
+                      <Group justify="space-between">
+                        <Text c="dimmed" size="sm">Subtotal Tiket:</Text>
+                        <Text fw={600} size="sm">
+                          {selectedTicketId ? formatPrice(baseTotalCents) : '-'}
+                        </Text>
+                      </Group>
+                    </>
+                  )}
                   {addonsTotalCents > 0 && (
                     <Group justify="space-between">
                       <Text c="dimmed" size="sm">Tambahan:</Text>

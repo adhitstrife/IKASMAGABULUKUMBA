@@ -1,4 +1,4 @@
-import type { TicketTypeAddon } from "@/types/ticket";
+import type { TicketTypeAddon, TicketTypeVariant } from "@/types/ticket";
 
 export function computeAddonsTotalIdr(
   selected: Set<string>[],
@@ -21,14 +21,51 @@ export function computeAddonsTotalCents(
   return computeAddonsTotalIdr(selected, available);
 }
 
-export function buildPurchaseTicketsPayload<T>(
-  participants: T[],
+export function buildPurchaseTicketsPayload(
+  participants: Array<{ bib_name: string; shirt_size: string }>,
   selected: Set<string>[],
-): (T & { addons: { addon_id: string }[] })[] {
+): Array<{ bib_name: string; shirt_size: string; addons: { addon_id: string }[] }> {
   return participants.map((p, i) => ({
-    ...p,
+    bib_name: p.bib_name,
+    shirt_size: p.shirt_size,
     addons: Array.from(selected[i] ?? new Set<string>()).map((addon_id) => ({
       addon_id,
     })),
   }));
 }
+
+export function getBonusPreview(
+  paidQuantity: number,
+  bonusThreshold: number | null | undefined,
+  bonusQuantity: number | null | undefined,
+): { free: number; total: number } {
+  if (!bonusThreshold || !bonusQuantity || bonusThreshold < 1) {
+    return { free: 0, total: paidQuantity };
+  }
+  const free = Math.floor(paidQuantity / bonusThreshold) * bonusQuantity;
+  return { free, total: paidQuantity + free };
+}
+
+export function isCommunityBonus(
+  variant: TicketTypeVariant | string | undefined,
+): boolean {
+  return variant === 'community';
+}
+
+export function formatBonusSummary(
+  bonusThreshold: number | null,
+  bonusQuantity: number | null,
+): string {
+  if (!bonusThreshold || !bonusQuantity) return '';
+  return `Beli ${bonusThreshold} gratis ${bonusQuantity}`;
+}
+
+export const VARIANT_CONFIG: Record<TicketTypeVariant, {
+  label: string;
+  color: string;
+  showBadge: boolean;
+}> = {
+  standard:  { label: '',          color: 'gray',  showBadge: false },
+  student:   { label: 'Siswa',     color: 'blue',  showBadge: true  },
+  community: { label: 'Komunitas', color: 'green', showBadge: true  },
+};
