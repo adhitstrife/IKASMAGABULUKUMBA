@@ -60,6 +60,15 @@ export function formatBonusSummary(
   return `Beli ${bonusThreshold} gratis ${bonusQuantity}`;
 }
 
+export function clampQuantity(
+  qty: number,
+  min: number,
+  max: number,
+): number {
+  if (!Number.isFinite(qty)) return min;
+  return Math.max(min, Math.min(max, Math.floor(qty)));
+}
+
 export function getEffectiveMaxPerOrder(
   maxPerOrder: number | null | undefined,
   totalQuantity: number,

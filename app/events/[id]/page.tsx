@@ -37,6 +37,7 @@ import { formatDate, formatPrice } from '@/lib/utils';
 import AddonPicker from '@/components/checkout/AddonPicker';
 import VariantBadge from '@/components/checkout/VariantBadge';
 import {
+  clampQuantity,
   computeAddonsTotalCents,
   buildPurchaseTicketsPayload,
   getBonusPreview,
@@ -190,28 +191,28 @@ export default function EventDetailPage() {
 
   const handleQuantityChange = (value: number | string) => {
     const qty = typeof value === 'string' ? parseInt(value) : value;
-    if (qty > 0 && selectedTicketId) {
-      const ticket = tickets.find((t) => t.id === selectedTicketId);
-      const minQty = ticket?.min_per_order ?? 1;
-      const maxQty = getEffectiveMaxPerOrder(
-        ticket?.max_per_order,
-        ticket?.quantity ?? 0,
-        ticket?.quantity_sold ?? 0,
-      );
-      const safeQty = Math.max(minQty, Math.min(qty, maxQty));
-      setQuantity(safeQty);
-      const { free, total } = getBonusPreview(
-        safeQty,
-        ticket?.bonus_threshold,
-        ticket?.bonus_quantity,
-      );
-      setTicketsData(Array(total).fill(null).map((_, i) => ({
-        bib_name: '',
-        shirt_size: '',
-        is_bonus: i >= safeQty,
-      })));
-      setSelectedAddons(Array(total).fill(null).map(() => new Set<string>()));
-    }
+    if (!selectedTicketId) return;
+    const ticket = tickets.find((t) => t.id === selectedTicketId);
+    if (!ticket) return;
+    const minQty = ticket.min_per_order ?? 1;
+    const maxQty = getEffectiveMaxPerOrder(
+      ticket.max_per_order,
+      ticket.quantity ?? 0,
+      ticket.quantity_sold ?? 0,
+    );
+    const safeQty = clampQuantity(qty, minQty, maxQty);
+    setQuantity(safeQty);
+    const { free, total } = getBonusPreview(
+      safeQty,
+      ticket.bonus_threshold,
+      ticket.bonus_quantity,
+    );
+    setTicketsData(Array(total).fill(null).map((_, i) => ({
+      bib_name: '',
+      shirt_size: '',
+      is_bonus: i >= safeQty,
+    })));
+    setSelectedAddons(Array(total).fill(null).map(() => new Set<string>()));
   };
 
   const handleTicketDataChange = (index: number, field: 'bib_name' | 'shirt_size', value: string) => {
@@ -277,6 +278,24 @@ export default function EventDetailPage() {
     );
 
     if (!ticket || !addition) return;
+
+    const minQty = ticket.min_per_order ?? 1;
+    const maxQty = getEffectiveMaxPerOrder(
+      ticket.max_per_order,
+      ticket.quantity ?? 0,
+      ticket.quantity_sold ?? 0,
+    );
+    const clamped = clampQuantity(quantity, minQty, maxQty);
+    if (clamped !== quantity) {
+      setQuantity(clamped);
+      setCheckoutError(
+        minQty === maxQty
+          ? `Jumlah tiket harus ${minQty}.`
+          : `Jumlah tiket harus antara ${minQty} dan ${maxQty}.`,
+      );
+      setActiveStep(0);
+      return;
+    }
 
     const payload = {
       event_id: event.id,
@@ -698,20 +717,28 @@ export default function EventDetailPage() {
                   selectedTicket?.quantity ?? 0,
                   selectedTicket?.quantity_sold ?? 0,
                 );
+                const isLocked = minQty === maxQty;
                 const isMaxUnlimited = !selectedTicket?.max_per_order || selectedTicket.max_per_order <= 0;
                 return (
                   <>
                     <NumberInput
                       label="Jumlah Tiket"
                       description={
-                        isMaxUnlimited
-                          ? `Minimum ${minQty} tiket per pesanan`
-                          : `Minimum ${minQty} tiket, maksimum ${maxQty} tiket per pesanan`
+                        isLocked
+                          ? `${minQty} tiket per pesanan`
+                          : isMaxUnlimited
+                            ? `Minimum ${minQty} tiket per pesanan`
+                            : `Minimum ${minQty} tiket, maksimum ${maxQty} tiket per pesanan`
                       }
                       min={minQty}
                       max={maxQty}
                       value={quantity}
                       onChange={handleQuantityChange}
+                      onBlur={() => handleQuantityChange(quantity)}
+                      disabled={isLocked}
+                      step={1}
+                      allowDecimal={false}
+                      allowNegative={false}
                     />
                     <Text size="sm" c="dimmed">
                       Harga per tiket:{' '}
@@ -755,7 +782,7 @@ export default function EventDetailPage() {
                     })()}
                     <Button
                       onClick={() => setActiveStep(1)}
-                      disabled={quantity < minQty || quantity > maxQty}
+                      disabled={isLocked ? false : (quantity < minQty || quantity > maxQty)}
                     >
                       Lanjutkan
                     </Button>
