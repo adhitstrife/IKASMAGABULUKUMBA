@@ -37,7 +37,12 @@ type Customization = {
 };
 
 const dataOf = <T,>(value: unknown) => ((value as { data?: T })?.data ?? value) as T;
-const dateInput = (value?: string | null) => value ? new Date(value).toISOString().slice(0, 16) : '';
+const dateInput = (value?: string | null) => {
+  if (!value) return '';
+  const date = new Date(value);
+  const pad = (number: number) => String(number).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
 
 export function EventSettings({ eventId, customization = false }: { eventId: string; customization?: boolean }) {
   const [event, setEvent] = useState<EventData>({});

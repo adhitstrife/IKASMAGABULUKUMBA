@@ -54,7 +54,7 @@ export function EventOverview({ eventId }: { eventId: string }) {
     if (racepackPin && !/^\d{6}$/.test(racepackPin)) return setError('PIN racepack harus terdiri dari 6 digit.');
     setAdding(true);
     try {
-      const response = await fetch(`/api/eo/additions/events/${eventId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: editionName, race_date: new Date(raceDate).toISOString(), location, timezone: 'UTC', racepack_pin: racepackPin || undefined }) });
+      const response = await fetch(`/api/eo/additions/events/${eventId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: editionName, race_date: new Date(raceDate).toISOString(), location, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, racepack_pin: racepackPin || undefined }) });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || payload.message || 'Edisi gagal ditambahkan.');
       const created = dataOf<EoAddition>(payload);
