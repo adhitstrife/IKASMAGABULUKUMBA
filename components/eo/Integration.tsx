@@ -1,0 +1,5 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { Alert, Button, Code, Loader, Stack, Text, Title } from '@mantine/core';
+import { IconCopy } from '@tabler/icons-react';
+export function Integration(){const[id,setId]=useState<string|null>(null);const[e,setE]=useState<string|null>(null);useEffect(()=>{fetch('/api/eo/eo/encryption/org-id').then(async r=>{const x=await r.json();if(!r.ok)throw new Error(x.error||'ID integrasi gagal dimuat.');setId(x.encryptedOrgId)}).catch(x=>setE(x.message))},[]);if(e)return <Alert color="red">{e}</Alert>;if(!id)return <Loader/>;const url=`${window.location.origin}/api/landing-page/public/${id}`;return <Stack><Title order={1}>Integrasi landing page</Title><Text c="dimmed">Gunakan encrypted organization ID berikut untuk mengambil data landing page publik organisasi Anda.</Text><Code block>{id}</Code><Button leftSection={<IconCopy size={16}/>} variant="light" onClick={()=>navigator.clipboard.writeText(id)}>Salin encrypted ID</Button><Text fw={600}>Endpoint publik</Text><Code block>{`GET ${url}`}</Code></Stack>}
