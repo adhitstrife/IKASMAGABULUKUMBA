@@ -2,16 +2,18 @@
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Badge, Box, Button, Card, Divider, Group, Loader, Modal, PinInput, Stack, Text, TextInput, ThemeIcon, Title } from '@mantine/core';
+import { Alert, Badge, Box, Button, Card, Divider, Group, Image, Loader, Modal, PinInput, Stack, Text, TextInput, ThemeIcon, Title } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconAlertCircle, IconCamera, IconCheck, IconLogout, IconPackage } from '@tabler/icons-react';
 
 type Addition = { id: string; name: string };
-type Ticket = { id: string; qr_code?: string; participant_first_name?: string; participant_last_name?: string; t_shirt_size?: string; status?: string };
+type Addon = { id: string; name: string; description?: string; price_per_unit?: number; catalog_price?: number; image_url?: string };
+type Ticket = { id: string; qr_code?: string; participant_first_name?: string; participant_last_name?: string; t_shirt_size?: string; status?: string; addons?: Addon[] };
 type Registration = { id: string; email?: string; phone?: string; id_number?: string; racepack_taken?: boolean; quantity?: number; tickets?: Ticket[] };
 type Detector = { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> };
 const list = <T,>(payload: unknown): T[] => Array.isArray((payload as { data?: unknown })?.data) ? (payload as { data: T[] }).data : [];
 const participantName = (ticket: Ticket) => `${ticket.participant_first_name || ''} ${ticket.participant_last_name || ''}`.trim() || 'Peserta';
+const rupiah = (value?: number) => `Rp${(value || 0).toLocaleString('id-ID')}`;
 
 export function StaffLogin() {
   const router = useRouter(); const [additionId, setAdditionId] = useState(''); const [pin, setPin] = useState(''); const [error, setError] = useState<string | null>(null); const [loading, setLoading] = useState(false);
@@ -51,6 +53,8 @@ export function StaffDashboard() {
       setError(cause instanceof Error ? cause.message : 'Pencarian tiket gagal.');
     } finally { setLoading(false); }
   };
+
+  const openDetail = (registration: Registration) => { setSelected(registration); detailModal.open(); };
 
   const markTaken = async (registration: Registration) => {
     const ticketId = registration.tickets?.[0]?.id;
@@ -102,37 +106,53 @@ export function StaffDashboard() {
         <Button variant="light" leftSection={<IconCamera size={16} />} onClick={() => { scannerModal.open(); setTimeout(() => { void startCamera(); }, 0); }}>Scan QR</Button>
       </Group>
       {loading ? <Loader /> : registrations.map((registration) => {
-        const tickets = registration.tickets || [];
+        const ticketCount = registration.tickets?.length ?? registration.quantity ?? 0;
         return <Card key={registration.id} withBorder>
-          <Group justify="space-between" align="start" wrap="nowrap">
+          <Group justify="space-between" align="center" wrap="nowrap">
             <div>
               <Text fw={700}>{registration.id_number || registration.email || 'Registrasi'}</Text>
-              <Text size="sm" c="dimmed">{registration.email || '-'} · {registration.phone || '-'} · {registration.quantity ?? tickets.length} tiket</Text>
-              <Stack gap={2} mt="xs">
-                {tickets.map((ticket) => <Text key={ticket.id} size="sm">{participantName(ticket)} · Kaos {ticket.t_shirt_size || '-'}</Text>)}
-              </Stack>
+              <Text size="sm" c="dimmed">{registration.email || '-'} · {registration.phone || '-'} · {ticketCount} tiket</Text>
             </div>
             <Group gap="xs">
               <Badge color={registration.racepack_taken ? 'gray' : 'teal'}>{registration.racepack_taken ? 'Sudah diambil' : 'Belum diambil'}</Badge>
-              <Button size="xs" onClick={() => { setSelected(registration); detailModal.open(); }}>Verifikasi</Button>
+              <Button size="xs" variant="light" onClick={() => openDetail(registration)}>Detail</Button>
             </Group>
           </Group>
         </Card>;
       })}
       {!loading && !registrations.length && <Text c="dimmed" ta="center" py="xl">Cari tiket dengan QR atau data peserta untuk memulai verifikasi.</Text>}
-      <Modal opened={detailOpened} onClose={detailModal.close} title="Verifikasi racepack">
+
+      <Modal opened={detailOpened} onClose={detailModal.close} title="Detail registrasi" size="lg">
         <Stack>
-          <Text fw={700}>{selected?.id_number || selected?.email || '-'}</Text>
-          <Text>Email: {selected?.email || '-'}</Text>
-          <Text>Telepon: {selected?.phone || '-'}</Text>
-          <Text>Jumlah tiket: {selected?.quantity ?? selected?.tickets?.length ?? 0}</Text>
-          <Divider label="Peserta" />
-          {(selected?.tickets || []).map((ticket) => <Text key={ticket.id} size="sm">{participantName(ticket)} · Kaos {ticket.t_shirt_size || '-'} · QR {ticket.qr_code || ticket.id}</Text>)}
+          <div>
+            <Text fw={700}>{selected?.id_number || selected?.email || '-'}</Text>
+            <Text size="sm" c="dimmed">Email: {selected?.email || '-'} · Telepon: {selected?.phone || '-'}</Text>
+            <Text size="sm" c="dimmed">Jumlah tiket: {selected?.quantity ?? selected?.tickets?.length ?? 0}</Text>
+          </div>
+          <Divider label="Tiket & peserta" />
+          <Stack gap="md">
+            {(selected?.tickets || []).map((ticket) => <Card key={ticket.id} withBorder radius="md" padding="sm">
+              <Text fw={600}>{participantName(ticket)}</Text>
+              <Text size="sm" c="dimmed">Kaos {ticket.t_shirt_size || '-'} · QR {ticket.qr_code || ticket.id}</Text>
+              {ticket.addons && ticket.addons.length > 0 && <Stack gap="xs" mt="sm">
+                <Text size="xs" fw={600} c="dimmed" tt="uppercase">Add-on</Text>
+                {ticket.addons.map((addon) => <Group key={addon.id} gap="sm" wrap="nowrap">
+                  {addon.image_url && <Image src={addon.image_url} alt={addon.name} w={40} h={40} radius="sm" fit="cover" />}
+                  <div style={{ flex: 1 }}>
+                    <Text size="sm" fw={500}>{addon.name}</Text>
+                    {addon.description && <Text size="xs" c="dimmed">{addon.description}</Text>}
+                  </div>
+                  <Text size="sm" fw={500}>{rupiah(addon.price_per_unit ?? addon.catalog_price)}</Text>
+                </Group>)}
+              </Stack>}
+            </Card>)}
+          </Stack>
           {selected?.racepack_taken
             ? <Alert color="yellow">Racepack registrasi ini sudah diambil.</Alert>
             : <Button color="teal" loading={marking} leftSection={<IconCheck size={17} />} onClick={() => selected && markTaken(selected)}>Tandai racepack diambil</Button>}
         </Stack>
       </Modal>
+
       <Modal opened={scannerOpened} onClose={() => { stopCamera(); scannerModal.close(); }} title="Scan QR tiket">
         <Stack>
           <video ref={videoRef} muted playsInline style={{ width: '100%', borderRadius: 8, background: '#000' }} />
